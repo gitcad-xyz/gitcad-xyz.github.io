@@ -26,11 +26,22 @@
   footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
 </style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / mcp</div><h1>MCP tool reference</h1>
 <p>The primary interface. Generated from the live registry — signatures and docs come from the code itself.</p>
+<h3>assembly_interference</h3>
+<pre class="sig"><code>assembly_interference(assembly_body: &#x27;dict[str, Any]&#x27;, models: &#x27;dict[str, str]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>EXACT interference check: build each instanced part's real geometry
+(`<code>models</code>`: part id -&gt; model text), place per the assembly transforms,
+boolean-intersect every AABB-overlapping pair. Nonzero common volume =
+collision, measured in mm3. Requires the OCCT kernel.</p>
 <h3>assembly_validate</h3>
 <pre class="sig"><code>assembly_validate(assembly_body: &#x27;dict[str, Any]&#x27;, parts: &#x27;list[str]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Validate an assembly body (instances + mates) against its parts'
 interfaces: port-type compatibility and positional coincidence — the
 cross-domain co-design check (ADR-0008).</p>
+<h3>board_connectivity</h3>
+<pre class="sig"><code>board_connectivity(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Copper connectivity check: every net's pads must be joined by actual
+touching copper (tracks/vias), and no copper component may bridge two
+nets. Geometric — catches mislabeled tracks as the shorts they are.</p>
 <h3>board_drc</h3>
 <pre class="sig"><code>board_drc(board: &#x27;str&#x27;, rulepack: &#x27;str | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Design-rule check: clearance, track width, annular ring, drill sizes,
@@ -93,6 +104,11 @@ backend was available — structure was checked, geometry was NOT.</p>
 <p>Interface-semver release gate (ADR-0009): given old and new part.json
 texts, classify the interface change and verify the version bump suffices.
 The check that stops shipping a breaking change as a patch.</p>
+<h3>project_release</h3>
+<pre class="sig"><code>project_release(sources: &#x27;list[str]&#x27;, outdir: &#x27;str&#x27;, version: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Project-Releaser-as-code: run EVERY check (validate/ERC/parity/DRC/fab)
+across the given model/board/schematic documents; only on all-green write
+the full artifact set + sha256 manifest. Red checks = no release.</p>
 <h3>schematic_board_parity</h3>
 <pre class="sig"><code>schematic_board_parity(schematic: &#x27;str&#x27;, board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Schematic &lt;-&gt; board consistency (the ECO check): missing components,
@@ -101,4 +117,9 @@ missing/extra connections, net mismatches — in both directions.</p>
 <pre class="sig"><code>schematic_erc(schematic: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Electrical rule check on a schematic document: pin-type conflicts,
 undriven inputs, unpowered power pins, unconnected pins, degenerate nets.
-'The schematic compiles' as a machine-decidable statement.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
+'The schematic compiles' as a machine-decidable statement.</p>
+<h3>semantic_diff</h3>
+<pre class="sig"><code>semantic_diff(old: &#x27;str&#x27;, new: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Meaning-level diff between two revisions of the same document text:
+features added/removed/changed by stable id, volume delta, board deltas,
+or interface-semver classification for parts. The PR review surface.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
