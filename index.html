@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gitcad — agent-first, headless, git-native CAD</title>
+<meta name="description" content="An open-source CAD platform built for agents: headless by default, git as the backbone, mechanical and electrical design on one substrate.">
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11151f; --ink:#e6e9f0; --muted:#9aa3b2;
+    --acc:#4fc3f7; --acc2:#81c784; --line:#232a38; --code:#0d1117;
+  }
+  @media (prefers-color-scheme: light){
+    :root{--bg:#fafbfc; --panel:#ffffff; --ink:#1a2230; --muted:#5a6472;
+      --acc:#0277bd; --acc2:#2e7d32; --line:#e3e8ef; --code:#f2f4f8;}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+  header{padding:18px 0;border-bottom:1px solid var(--line)}
+  header .wrap{display:flex;align-items:center;justify-content:space-between}
+  .logo{font-weight:700;font-size:20px;letter-spacing:-.3px}
+  .logo span{color:var(--acc)}
+  nav a{margin-left:22px;color:var(--muted);font-size:15px}
+  .hero{padding:88px 0 64px;text-align:center}
+  .hero h1{font-size:clamp(30px,5.5vw,52px);line-height:1.12;letter-spacing:-1px;font-weight:800}
+  .hero h1 em{font-style:normal;color:var(--acc)}
+  .hero p.sub{margin:22px auto 0;max-width:640px;color:var(--muted);font-size:19px}
+  .cta{margin-top:34px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;padding:11px 22px;border-radius:8px;font-weight:600;font-size:15px}
+  .btn.primary{background:var(--acc);color:#fff}
+  .btn.ghost{border:1px solid var(--line);color:var(--ink)}
+  .install{margin:30px auto 0;max-width:430px;background:var(--code);border:1px solid var(--line);
+    border-radius:8px;padding:13px 18px;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    color:var(--acc2);text-align:left;overflow-x:auto}
+  section{padding:56px 0;border-top:1px solid var(--line)}
+  h2{font-size:26px;letter-spacing:-.4px;margin-bottom:8px}
+  .lead{color:var(--muted);max-width:720px;margin-bottom:34px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px}
+  .card h3{font-size:17px;margin-bottom:8px}
+  .card h3 .tag{color:var(--acc)}
+  .card p{color:var(--muted);font-size:14.5px}
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+  td:first-child{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--acc);white-space:nowrap}
+  .tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 4px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;
+    font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre .c{color:var(--muted)} pre .k{color:var(--acc)} pre .s{color:var(--acc2)}
+  .status li{margin:7px 0;color:var(--muted)} .status{padding-left:20px}
+  .status b{color:var(--ink)}
+  footer{border-top:1px solid var(--line);padding:34px 0;color:var(--muted);font-size:14px}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">git<span>cad</span></div>
+    <nav>
+      <a href="#why">Why</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#status">Status</a>
+      <a href="https://github.com/gitcad-xyz/gitcad">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>CAD where <em>git</em> is the backbone<br>and <em>agents</em> are first-class users</h1>
+    <p class="sub">An open-source platform for mechanical and electrical design:
+    headless by default, driven over MCP, versioned like code, verified like software.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/gitcad-xyz/gitcad">View on GitHub</a>
+      <a class="btn ghost" href="https://github.com/gitcad-xyz/gitcad/tree/main/docs/adr">Read the ADRs</a>
+    </div>
+    <div class="install">pip install gitcad<span style="color:var(--muted)">   # headless core</span><br>pip install "gitcad[occt]"<span style="color:var(--muted)">   # + the OCCT b-rep kernel</span></div>
+  </div>
+</div>
+
+<section id="why">
+  <div class="wrap">
+    <h2>Three bets</h2>
+    <p class="lead">Every incumbent CAD tool is a GUI with an API bolted on, a proprietary
+    binary format, and a subscription wall around collaboration. gitcad inverts all three.</p>
+    <div class="grid">
+      <div class="card">
+        <h3><span class="tag">01</span> · Agent-first, MCP-native</h3>
+        <p>The MCP tool surface is the primary interface — the Python API and the web UI
+        are clients of the same handlers. Agents model by <i>verifying</i>, not hoping:
+        every operation returns machine-readable validation, measurement, and geometry
+        checks. When something breaks, the failure is fingerprinted, reduced to a minimal
+        synthetic repro on your machine, and — only with your approval — filed upstream.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag">02</span> · Git-native</h3>
+        <p>The model is <b>text</b> — a canonical, deterministic feature tree. Geometry
+        (STEP, Gerbers, PDFs) is a build artifact, never source. So you get branching,
+        merging, blame, pull requests, and semantic diffs — volume deltas, added features,
+        before/after renders — for free. Releases are lockfile-pinned and reproducible
+        forever. Stable entity identity is designed in from day one, so merges don't
+        corrupt references.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag">03</span> · One substrate, two domains</h3>
+        <p>Mechanical (b-rep solids, drawings) and electrical (schematics, PCB, Gerbers)
+        are equal-weight domains on one part standard: every part publishes a
+        domain-neutral interface — envelope, frames, typed ports — and assemblies mate
+        against interfaces, never internals. The enclosure and the board live in one
+        git history. Interface-semver makes compatibility machine-checkable.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="architecture">
+  <div class="wrap">
+    <h2>Architecture: six seams</h2>
+    <p class="lead">Everything swappable lives behind one of six narrow interfaces.
+    The geometry kernel is proven technology (OpenCASCADE via OCP) — the value is the
+    layers around it. A major architecture change means replacing one backend, not a rewrite.</p>
+    <div class="tablewrap">
+      <table>
+        <tr><th>Seam</th><th>Responsibility</th><th>Backend</th></tr>
+        <tr><td>Kernel</td><td>b-rep geometry: primitives, booleans, fillets, validation, measurement</td><td>OCCT via cadquery-ocp</td></tr>
+        <tr><td>IdentityService</td><td>stable entity IDs — the topological-naming fix</td><td>lineage-hash</td></tr>
+        <tr><td>DocumentModel</td><td>feature tree + canonical text serialization</td><td>deterministic JSON</td></tr>
+        <tr><td>Renderer</td><td>headless tessellation → images / glTF</td><td>in progress</td></tr>
+        <tr><td>DrawingEngine</td><td>3D → 2D projection, dimensions, sheets</td><td>OCCT HLR → SVG/PDF</td></tr>
+        <tr><td>Storage</td><td>git-backed models + content-addressed artifacts</td><td>git</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What it looks like</h2>
+    <pre><span class="c"># An agent (or you) builds a part through the same tools:</span>
+m = tools.model_new()
+m = tools.feature_add(m, op=<span class="s">"box"</span>, params={<span class="s">"dx"</span>:60, <span class="s">"dy"</span>:40, <span class="s">"dz"</span>:8})
+m = tools.feature_add(m, op=<span class="s">"cylinder"</span>, params={<span class="s">"radius"</span>:3.2, <span class="s">"height"</span>:8}, ...)
+m = tools.feature_add(m, op=<span class="s">"boolean"</span>, params={<span class="s">"kind"</span>:<span class="s">"cut"</span>}, inputs=[...])
+
+<span class="c"># ...then verifies instead of hoping:</span>
+tools.model_validate(m)   <span class="c"># watertight? self-intersecting? → structured report</span>
+tools.model_measure(m)    <span class="c"># volume, centroid — a deterministic oracle</span>
+
+<span class="c"># ...and ships real manufacturing outputs:</span>
+tools.model_export(m, fmt=<span class="s">"step"</span>)     <span class="c"># → part.step</span>
+tools.model_drawing(m)                 <span class="c"># → dimensioned drawing (SVG/PDF)</span>
+tools.board_export_fab(b)              <span class="c"># → Gerber X2 + Excellon + pick-and-place</span></pre>
+  </div>
+</section>
+
+<section id="status">
+  <div class="wrap">
+    <h2>Status</h2>
+    <p class="lead">Early and moving fast. The durable decisions are written down as
+    <a href="https://github.com/gitcad-xyz/gitcad/tree/main/docs/adr">ADRs</a> before code.</p>
+    <ul class="status">
+      <li><b>Working now</b> — document model with stable identity · OCCT kernel (primitives, validation, measurement) · MCP tool surface · privacy-preserving bug reducer · three-tier test corpus</li>
+      <li><b>v0.1 target</b> — manufacturing outputs end to end: STEP export, dimensioned 2D drawings, Gerber X2 / Excellon / pick-and-place</li>
+      <li><b>Next</b> — the cross-domain part standard (interfaces, ports, lockfile versioning) · atomic component registry with trust tiers · web viewer · Night Shift</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 gitcad — Apache-2.0</div>
+    <div><a href="https://github.com/gitcad-xyz/gitcad">GitHub</a> · <a href="https://github.com/gitcad-xyz/gitcad/blob/main/CLAUDE.md">Constitution</a> · <a href="https://github.com/gitcad-xyz/gitcad/tree/main/docs/research">Research</a></div>
+  </div>
+</footer>
+
+</body>
+</html>
