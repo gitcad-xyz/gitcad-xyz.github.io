@@ -30,6 +30,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: install gitcad workspace
+        run: |
+          pip install --no-deps source/packages/gitcad-core source/packages/gitcad-mech             source/packages/gitcad-ecad source/packages/gitcad
       - name: generate docs
         run: python source/scripts/gen_docs.py docs
       - name: commit if changed
