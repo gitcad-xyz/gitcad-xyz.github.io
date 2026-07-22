@@ -56,6 +56,19 @@ Excellon drill, pick-and-place CSV, manifest.</p>
 <p>Import an existing KiCad board (.kicad_pcb) into a gitcad board.
 Pure Python — no kernel needed. The report lists every approximation and
 drop (zones, arcs, complex outlines); nothing is lost silently.</p>
+<h3>board_pad_position</h3>
+<pre class="sig"><code>board_pad_position(board: &#x27;str&#x27;, pad: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Resolve "REF.pad_name" to absolute board coordinates + side/through/net
+— no more mental pad arithmetic (dogfood friction #1).</p>
+<h3>board_route</h3>
+<pre class="sig"><code>board_route(board: &#x27;str&#x27;, net: &#x27;str&#x27;, points: &#x27;list[dict[str, Any]]&#x27;, width: &#x27;float&#x27; = 0.4) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Route a net through waypoints ({"pad": "REF.name"} or {"x","y"},
+optional "layer") — auto-vias on layer changes, wrong-net pads refused,
+SMD side enforced. Returns the updated board text.</p>
+<h3>board_to_model</h3>
+<pre class="sig"><code>board_to_model(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>The board as a 3D mech model (outline x thickness, mounting holes cut)
+— ready for assemblies, interference, STEP, and the viewer.</p>
 <h3>board_validate</h3>
 <pre class="sig"><code>board_validate(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Fab-readiness checks on a board document. Machine-readable.</p>
@@ -68,10 +81,10 @@ id assigned to the feature (never an ordinal index).</p>
 <p>Build the model and emit a dimensioned 2D drawing (SVG or PDF by file
 extension) of the final feature — front/top/right/iso, third angle.</p>
 <h3>model_entities</h3>
-<pre class="sig"><code>model_entities(model: &#x27;str&#x27;, feature_id: &#x27;str&#x27;, kind: &#x27;str&#x27; = &#x27;edge&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<pre class="sig"><code>model_entities(model: &#x27;str&#x27;, feature_id: &#x27;str&#x27;, kind: &#x27;str&#x27; = &#x27;edge&#x27;, select: &#x27;str | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Stable entity ids + descriptors for a feature's topology (ADR-0003).
-Use the returned ids in entity-referencing params (e.g. fillet `<code>edges</code>`) —
-they survive upstream edits because identity re-binds by fingerprint.</p>
+`<code>select</code>` filters with the query DSL (e.g. "plane,zmax" = the back face;
+"cylinder"; "line,zmin") instead of manual centroid filtering.</p>
 <h3>model_export</h3>
 <pre class="sig"><code>model_export(model: &#x27;str&#x27;, path: &#x27;str&#x27;, fmt: &#x27;str&#x27; = &#x27;step&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and export the final feature's shape to STEP or STL —
