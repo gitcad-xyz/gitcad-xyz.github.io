@@ -51,6 +51,11 @@ export_fab(b, &quot;fab/&quot;)   # Gerber X2, Excellon (PTH+NPTH), pick-and-pla
 <p>Every mounting hole is simultaneously fab data and a published <code>mech.bolt</code></p>
 <p>port in the board's derived <code>part.json</code> — the enclosure mates against it.</p>
 <p>See the <a href="adr/0008-part-standard.html">Part standard</a>.</p>
+<h2>see it</h2>
+<pre><code>gitcad-view part.gitcad.json     # live 3D viewer at localhost:8137
+gitcad-view board.gitcad.json    # 2D board render</code></pre>
+<p>Zero-dependency WebGL viewer with live reload — edit the model text (or let</p>
+<p>an agent edit it) and the view updates in a second.</p>
 <h2>the examples</h2>
 <ul>
 <li>- <a href="https://github.com/gitcad-xyz/gitcad/blob/main/examples/bracket.py">bracket.py</a> — model → verify → STEP + drawing</li>

@@ -77,6 +77,12 @@ feature — the deterministic oracle an agent verifies against.</p>
 <h3>model_new</h3>
 <pre class="sig"><code>model_new() -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Create an empty model; returns its canonical text form.</p>
+<h3>model_recognize</h3>
+<pre class="sig"><code>model_recognize(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Convert dead imported geometry back into a parameterized model — WITH
+PROOF. Recognizes plate-with-holes shapes; the returned model rebuilds to
+exactly the input geometry (symmetric-difference residual ~0) with real,
+editable dimensions. Unrecognizable shapes are reported honestly.</p>
 <h3>model_validate</h3>
 <pre class="sig"><code>model_validate(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build and run geometric validity checks per feature (watertight,

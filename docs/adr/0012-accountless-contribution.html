@@ -1,0 +1,91 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0012: Contribution without platform accounts — the relay — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0012</div><h1>ADR-0012: Contribution without platform accounts — the relay</h1>
+<p><b>Status:</b> accepted (relay service staged with the registry, ADR-0010)</p>
+<h2>Context</h2>
+<p>Requiring a GitHub account to file a bug or contribute a fix is real friction —</p>
+<p>especially for gitcad's primary reporters, which are *agents running inside the</p>
+<p>tool* (ADR-0006/0007), and for engineers whose employers restrict platform</p>
+<p>accounts. GitHub itself offers no accountless path. But GitHub is our backend,</p>
+<p>not our front door.</p>
+<h2>Decision</h2>
+<p>**The tool is the client; a gitcad.xyz relay is the front door; GitHub is an</p>
+<p>implementation detail behind a bot account.**</p>
+<ol>
+<li>1. <b>Bug reports</b> — the ADR-0007 pipeline already ends at "user approves the</li>
+</ol>
+<p>   payload" (fingerprint + transmit-safe scrubbed repro). The submission target</p>
+<p>   is a gitcad.xyz relay endpoint, not GitHub:</p>
+<ul>
+<li>   - relay sandbox-validates the repro (untrusted code, full ADR-0006 rules),</li>
+<li>   - dedups by fingerprint (increments the counter instead of refiling),</li>
+<li>   - a bot opens/updates the GitHub issue with attribution</li>
+</ul>
+<p>     <code>reported via gitcad relay</code> (+ optional reporter email, never required).</p>
+<p>   No account, no browser, no form — reporting is one approved MCP call.</p>
+<ol>
+<li>2. <b>Patches</b> — the mailing-list model, modernized (precedent: the Linux</li>
+</ol>
+<p>   kernel accepts patches with no forge account at all):</p>
+<ul>
+<li>   - contributor submits <code>git format-patch</code> output or a bundle to the relay,</li>
+</ul>
+<p>     with a <b>DCO <code>Signed-off-by:</code> line</b> (name/email) for licensing provenance,</p>
+<ul>
+<li>   - relay runs the full CI gate in a sandbox <i>before</i> anything reaches GitHub,</li>
+<li>   - the bot opens a PR: <code>Author:</code> preserved from the patch, body notes the</li>
+</ul>
+<p>     relay origin. CODEOWNERS review applies exactly as for any PR.</p>
+<ol>
+<li>3. <b>Identity is progressive, not required.</b> Anonymous fingerprint-only</li>
+</ol>
+<p>   reports are always accepted (they only increment counters). Repro</p>
+<p>   submissions want a contact email (for follow-up) but work without one.</p>
+<p>   Patches require DCO sign-off (a name+email assertion, not an account).</p>
+<p>   Registry <i>trust tiers</i> (ADR-0010) do require persistent identity — you</p>
+<p>   cannot build reputation anonymously, and attestations must be attributable.</p>
+<ol>
+<li>4. <b>Email as degraded transport</b> — the same relay accepts the same payloads</li>
+</ol>
+<p>   at <code>bugs@gitcad.xyz</code> / <code>patches@gitcad.xyz</code> for environments where even an</p>
+<p>   HTTP client is awkward. Parsing is strict: payloads must be tool-generated</p>
+<p>   attachments, not prose.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- The bug loop's autonomy tiers, sandbox rules, and prompt-injection posture</li>
+</ul>
+<p>  (ADR-0006) apply at the relay unchanged — it is the <i>same</i> pipeline with a</p>
+<p>  public entrance.</p>
+<ul>
+<li>- The relay is the first piece of hosted infrastructure gitcad operates; it</li>
+</ul>
+<p>  ships alongside the registry service since they share hosting, auth-lite,</p>
+<p>  and abuse controls (rate limits, size caps, quarantine).</p>
+<ul>
+<li>- If the relay is ever down, GitHub remains directly usable — the relay adds</li>
+</ul>
+<p>  a door, it never becomes a gate.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
