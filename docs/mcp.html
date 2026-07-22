@@ -31,10 +31,20 @@
 <p>Validate an assembly body (instances + mates) against its parts'
 interfaces: port-type compatibility and positional coincidence — the
 cross-domain co-design check (ADR-0008).</p>
+<h3>board_drc</h3>
+<pre class="sig"><code>board_drc(board: &#x27;str&#x27;, rulepack: &#x27;str | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Design-rule check: clearance, track width, annular ring, drill sizes,
+hole spacing, edge clearance — against a rule pack (default: conservative
+2-layer prototype profile). Rule packs are canonical text and shareable.</p>
 <h3>board_export_fab</h3>
 <pre class="sig"><code>board_export_fab(board: &#x27;str&#x27;, outdir: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Validate and write the full fabrication package: Gerber X2 layers,
 Excellon drill, pick-and-place CSV, manifest.</p>
+<h3>board_import</h3>
+<pre class="sig"><code>board_import(path: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Import an existing KiCad board (.kicad_pcb) into a gitcad board.
+Pure Python — no kernel needed. The report lists every approximation and
+drop (zones, arcs, complex outlines); nothing is lost silently.</p>
 <h3>board_validate</h3>
 <pre class="sig"><code>board_validate(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Fab-readiness checks on a board document. Machine-readable.</p>
@@ -46,10 +56,20 @@ id assigned to the feature (never an ordinal index).</p>
 <pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and emit a dimensioned 2D drawing (SVG or PDF by file
 extension) of the final feature — front/top/right/iso, third angle.</p>
+<h3>model_entities</h3>
+<pre class="sig"><code>model_entities(model: &#x27;str&#x27;, feature_id: &#x27;str&#x27;, kind: &#x27;str&#x27; = &#x27;edge&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Stable entity ids + descriptors for a feature's topology (ADR-0003).
+Use the returned ids in entity-referencing params (e.g. fillet `<code>edges</code>`) —
+they survive upstream edits because identity re-binds by fingerprint.</p>
 <h3>model_export</h3>
 <pre class="sig"><code>model_export(model: &#x27;str&#x27;, path: &#x27;str&#x27;, fmt: &#x27;str&#x27; = &#x27;step&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and export the final feature's shape to STEP or STL —
 the mechanical manufacturing deliverable.</p>
+<h3>model_import</h3>
+<pre class="sig"><code>model_import(path: &#x27;str&#x27;, fmt: &#x27;str&#x27; = &#x27;auto&#x27;, assets_dir: &#x27;str&#x27; = &#x27;.&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Import existing mechanical work (STEP or FreeCAD .FCStd) into a gitcad
+model. Returns the model text plus an honest report of what was imported,
+approximated, and dropped. Requires the OCCT kernel.</p>
 <h3>model_measure</h3>
 <pre class="sig"><code>model_measure(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build against the best available kernel and return mass properties per
@@ -60,9 +80,19 @@ feature — the deterministic oracle an agent verifies against.</p>
 <h3>model_validate</h3>
 <pre class="sig"><code>model_validate(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build and run geometric validity checks per feature (watertight,
-self-intersection, ...). Machine-readable so the agent can act on it.</p>
+self-intersection, ...). `<code>geometry_verified: false</code>` means only the null
+backend was available — structure was checked, geometry was NOT.</p>
 <h3>part_check_release</h3>
 <pre class="sig"><code>part_check_release(old_part: &#x27;str&#x27;, new_part: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Interface-semver release gate (ADR-0009): given old and new part.json
 texts, classify the interface change and verify the version bump suffices.
-The check that stops shipping a breaking change as a patch.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>
+The check that stops shipping a breaking change as a patch.</p>
+<h3>schematic_board_parity</h3>
+<pre class="sig"><code>schematic_board_parity(schematic: &#x27;str&#x27;, board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Schematic &lt;-&gt; board consistency (the ECO check): missing components,
+missing/extra connections, net mismatches — in both directions.</p>
+<h3>schematic_erc</h3>
+<pre class="sig"><code>schematic_erc(schematic: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Electrical rule check on a schematic document: pin-type conflicts,
+undriven inputs, unpowered power pins, unconnected pins, degenerate nets.
+'The schematic compiles' as a machine-decidable statement.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
