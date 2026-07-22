@@ -1,0 +1,46 @@
+name: sync-docs
+
+# Regenerate /docs/ from the main gitcad repo. Secretless by design: this
+# workflow lives in the site repo, so the default GITHUB_TOKEN can push here;
+# the source repo is public and needs no credentials to read.
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # every 6 hours
+  workflow_dispatch: {}       # manual "sync now" button
+  push:
+    branches: [main]
+    paths-ignore: [docs/**]   # avoid self-triggering on the sync commit
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-docs
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: gitcad-xyz/gitcad
+          path: source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: generate docs
+        run: python source/scripts/gen_docs.py docs
+      - name: commit if changed
+        run: |
+          rm -rf source
+          git config user.name "gitcad-docs-bot"
+          git config user.email "docs@gitcad.xyz"
+          git add docs
+          if git diff --cached --quiet; then
+            echo "docs unchanged"
+          else
+            git commit -m "docs: sync from gitcad-xyz/gitcad"
+            git push
+          fi

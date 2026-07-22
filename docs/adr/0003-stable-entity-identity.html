@@ -1,0 +1,63 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0003: Stable entity identity (the topological-naming fix) — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0003</div><h1>ADR-0003: Stable entity identity (the topological-naming fix)</h1>
+<p><b>Status:</b> accepted — <b>foundational, get this right on day one</b></p>
+<h2>Context</h2>
+<p>Reference a face as "face 7", let an upstream edit renumber faces, and "face 7"</p>
+<p>silently becomes a different face. Every downstream reference corrupts. This is</p>
+<p>FreeCAD's most notorious weakness. It is <i>fatal</i> to a git workflow, where merge</p>
+<p>and rebase reorder operations constantly. Retrofitting a fix later is effectively</p>
+<p>impossible — the identity scheme has to be present before any feature stores a</p>
+<p>reference.</p>
+<h2>Decision</h2>
+<p>An entity's identity is derived from **construction lineage + a rounded geometric</p>
+<p>fingerprint**, never from an ordinal index (<code>gitcad.identity.IdentityService</code>).</p>
+<ul>
+<li>- <code>assign(descriptor, lineage)</code> mints a deterministic, collision-resistant id.</li>
+</ul>
+<p>  Same construction → same id on every machine; an unrelated upstream edit does</p>
+<p>  not perturb ids of entities it did not touch.</p>
+<ul>
+<li>- <code>resolve(id, candidates)</code> re-binds a stored id to the best-matching current</li>
+</ul>
+<p>  entity after a rebuild, or reports it genuinely gone.</p>
+<ul>
+<li>- Geometric quantities are rounded to a tolerance so float noise cannot split an</li>
+</ul>
+<p>  identity. Identity heuristics must be <b>auditable</b>, not magical.</p>
+<p>Feature ids follow the same principle (<code>Document._mint_id</code>): a hash of</p>
+<p>(op, param-keys, input-ids), with deterministic disambiguation of structural</p>
+<p>twins — never a running index.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Merge/rebase/branch on model text is survivable.</li>
+<li>- Any change to identity semantics is a <b>human-sign-off</b> change (<code>CODEOWNERS</code>)</li>
+</ul>
+<p>  and must be accompanied by a migration story, because stored ids are durable.</p>
+<ul>
+<li>- This is arguably worth more than the choice of kernel.</li>
+</ul><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>docs — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a></div><h1>gitcad docs</h1>
+<p>Agent-first, headless, git-native CAD. Models are canonical text; STEP,</p>
+<p>drawings, and Gerbers are build artifacts.</p>
+<h2>install</h2>
+<pre><code>pip install gitcad            # headless core (pure Python)
+pip install &quot;gitcad[occt]&quot;    # + the OCCT b-rep kernel (STEP, drawings)
+pip install &quot;gitcad[mcp]&quot;     # + the MCP server (gitcad-mcp entrypoint)</code></pre>
+<p>Until the PyPI release lands: <code>pip install git+https://github.com/gitcad-xyz/gitcad</code>.</p>
+<h2>a part in five calls</h2>
+<pre><code>from gitcad.mcp.server import REGISTRY as tools
+
+m = tools[&quot;model_new&quot;]()[&quot;model&quot;]
+r = tools[&quot;feature_add&quot;](model=m, op=&quot;box&quot;, params={&quot;dx&quot;:60,&quot;dy&quot;:40,&quot;dz&quot;:8})
+m = r[&quot;model&quot;]
+
+tools[&quot;model_validate&quot;](model=m)          # machine-readable checks
+tools[&quot;model_export&quot;](model=m, path=&quot;part.step&quot;)
+tools[&quot;model_drawing&quot;](model=m, path=&quot;part.pdf&quot;)   # dimensioned 4-view drawing</code></pre>
+<h2>a board to fab</h2>
+<pre><code>from gitcad.ecad import Board, MountingHole, export_fab
+
+b = Board(name=&quot;blinky&quot;, outline=[(0,0),(30,0),(30,20),(0,20)])
+b.mounting_holes += [MountingHole(&quot;mnt_1&quot;, 3, 3, 3.2, thread=&quot;M3&quot;)]
+export_fab(b, &quot;fab/&quot;)   # Gerber X2, Excellon (PTH+NPTH), pick-and-place</code></pre>
+<p>Every mounting hole is simultaneously fab data and a published <code>mech.bolt</code></p>
+<p>port in the board's derived <code>part.json</code> — the enclosure mates against it.</p>
+<p>See the <a href="adr/0008-part-standard.html">Part standard</a>.</p>
+<h2>the examples</h2>
+<ul>
+<li>- <a href="https://github.com/gitcad-xyz/gitcad/blob/main/examples/bracket.py">bracket.py</a> — model → verify → STEP + drawing</li>
+<li>- <a href="https://github.com/gitcad-xyz/gitcad/blob/main/examples/blinky.py">blinky.py</a> — board → verify → full fab package</li>
+<li>- <a href="https://github.com/gitcad-xyz/gitcad/blob/main/examples/product.py">product.py</a> — cross-domain assembly with derived interfaces and the release gate</li>
+</ul>
+<h2>reference</h2>
+<ul>
+<li>- <a href="mcp.html">MCP tool reference</a> — every tool, generated from the code</li>
+<li>- <a href="adr/">Architecture decision records</a> — the durable spec</li>
+<li>- <a href="https://github.com/gitcad-xyz/gitcad/blob/main/docs/research/feature-map.md">Competitive feature map</a></li>
+</ul><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

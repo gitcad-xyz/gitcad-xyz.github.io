@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MCP tools — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / mcp</div><h1>MCP tool reference</h1>
+<p>The primary interface. Generated from the live registry — signatures and docs come from the code itself.</p>
+<h3>assembly_validate</h3>
+<pre class="sig"><code>assembly_validate(assembly_body: &#x27;dict[str, Any]&#x27;, parts: &#x27;list[str]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Validate an assembly body (instances + mates) against its parts'
+interfaces: port-type compatibility and positional coincidence — the
+cross-domain co-design check (ADR-0008).</p>
+<h3>board_export_fab</h3>
+<pre class="sig"><code>board_export_fab(board: &#x27;str&#x27;, outdir: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Validate and write the full fabrication package: Gerber X2 layers,
+Excellon drill, pick-and-place CSV, manifest.</p>
+<h3>board_validate</h3>
+<pre class="sig"><code>board_validate(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Fab-readiness checks on a board document. Machine-readable.</p>
+<h3>feature_add</h3>
+<pre class="sig"><code>feature_add(model: &#x27;str&#x27;, op: &#x27;str&#x27;, params: &#x27;dict[str, Any] | None&#x27; = None, inputs: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Append an intent-level feature. Returns the new model text and the stable
+id assigned to the feature (never an ordinal index).</p>
+<h3>model_drawing</h3>
+<pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Build the model and emit a dimensioned 2D drawing (SVG or PDF by file
+extension) of the final feature — front/top/right/iso, third angle.</p>
+<h3>model_export</h3>
+<pre class="sig"><code>model_export(model: &#x27;str&#x27;, path: &#x27;str&#x27;, fmt: &#x27;str&#x27; = &#x27;step&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Build the model and export the final feature's shape to STEP or STL —
+the mechanical manufacturing deliverable.</p>
+<h3>model_measure</h3>
+<pre class="sig"><code>model_measure(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Build against the best available kernel and return mass properties per
+feature — the deterministic oracle an agent verifies against.</p>
+<h3>model_new</h3>
+<pre class="sig"><code>model_new() -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Create an empty model; returns its canonical text form.</p>
+<h3>model_validate</h3>
+<pre class="sig"><code>model_validate(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Build and run geometric validity checks per feature (watertight,
+self-intersection, ...). Machine-readable so the agent can act on it.</p>
+<h3>part_check_release</h3>
+<pre class="sig"><code>part_check_release(old_part: &#x27;str&#x27;, new_part: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Interface-semver release gate (ADR-0009): given old and new part.json
+texts, classify the interface change and verify the version bump suffices.
+The check that stops shipping a breaking change as a patch.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

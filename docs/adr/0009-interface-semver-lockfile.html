@@ -1,0 +1,63 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0009: Interface-semver and the lockfile — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0009</div><h1>ADR-0009: Interface-semver and the lockfile</h1>
+<p><b>Status:</b> accepted</p>
+<h2>Context</h2>
+<p>Parts evolve. Consumers need to know, <i>mechanically</i>, whether an upgrade can</p>
+<p>break them — and releases must be reproducible forever. Package managers solved</p>
+<p>this shape (cargo/npm); parts are packages.</p>
+<h2>Decision</h2>
+<p><b>1. A dependency is two things: an intent constraint + a lock.</b></p>
+<pre><code>// part.json                       // gitcad.lock (generated, committed)
+&quot;deps&quot;: { &quot;prt_9f2c&quot;: &quot;^1.4&quot; }     &quot;prt_9f2c&quot;: { &quot;version&quot;: &quot;1.4.2&quot;, &quot;content&quot;: &quot;blake2b:77ab...&quot; }</code></pre>
+<p>The lock pins exact canonical-text content hashes → byte-reproducible builds on</p>
+<p>any machine, forever. Upgrading is an explicit, reviewable operation</p>
+<p>(<code>gitcad update</code>), never a surprise. Constraints: <code>^</code> (compatible), <code>~</code></p>
+<p>(patch-level), exact, <code>*</code>.</p>
+<p><b>2. Semver is measured on the <i>interface</i>, not the internals:</b></p>
+<table><tr><th>Bump</th><th>Meaning</th></tr>
+<tr><td><b>MAJOR</b></td><td>interface broke: port/frame removed or moved; port type/spec changed; envelope <b>grew</b></td></tr>
+<tr><td><b>MINOR</b></td><td>interface grew compatibly: port/frame added; envelope <b>shrank</b></td></tr>
+<tr><td><b>PATCH</b></td><td>interface byte-identical: internals only</td></tr>
+</table>
+<p><b>3. The bump is machine-enforced.</b> The interface block is canonical text;</p>
+<p><code>gitcad.part.interface.classify_change(old, new)</code> computes the <i>required</i> bump</p>
+<p>and <code>check_release</code> rejects a version number smaller than required. CI runs it</p>
+<p>on every part release — an agent cannot mislabel a copper move as a patch.</p>
+<p>This is geometric semver (ADR-0004) promoted to the part level.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- "Patch and minor releases cannot break your assembly" is a <i>guarantee</i>, not</li>
+</ul>
+<p>  a convention — the backbone of trust between teams and for the registry.</p>
+<ul>
+<li>- Old boards/assemblies never mutate when a library updates (the failure both</li>
+</ul>
+<p>  KiCad and Altium work around); upgrades are diffs.</p>
+<ul>
+<li>- Properties (mass, notes) are informational: changing them is PATCH.</li>
+</ul><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

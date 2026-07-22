@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0011: Night Shift — scheduled autonomous work sessions — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0011</div><h1>ADR-0011: Night Shift — scheduled autonomous work sessions</h1>
+<p><b>Status:</b> accepted (implementation staged after the registry MVP)</p>
+<h2>Context</h2>
+<p>Most subscription users leave the majority of their agent quota unused daily;</p>
+<p>it expires worthless. The project has an unbounded queue of exactly the work</p>
+<p>agents do well unattended. Connect the two — and answer the question every</p>
+<p>open-source CAD project dies on: who does the unglamorous work?</p>
+<h2>Decision</h2>
+<p>A built-in scheduler: *"between these hours, spend up to X of my quota on this</p>
+<p>queue, show me a morning report."* Opt-in, visible budget, one-click off.</p>
+<p><b>Queues, in priority order:</b></p>
+<ol>
+<li>1. <b>The user's own backlog</b> (why they turn it on): DRC/validation sweeps with</li>
+</ol>
+<p>   fix-proposals as draft PRs; drawing regeneration; reduced repros for their</p>
+<p>   failing invariants; lockfile update proposals with impact diffs;</p>
+<p>   cross-domain checks ("enclosure changed Tuesday — board still fits").</p>
+<ol>
+<li>2. <b>The community queue</b> (the flywheel, separately opt-in): part verification</li>
+</ol>
+<p>   (re-derive <code>draft</code> components from datasheets — the <code>verified</code> tier of</p>
+<p>   ADR-0010, embarrassingly parallel); synthetic-reproducer search for</p>
+<p>   fingerprint-only bug reports (ADR-0007); regression triage; corpus fuzzing.</p>
+<p><b>Hard rules (stricter than daytime, per ADR-0006):</b></p>
+<ul>
+<li>- Overnight work produces <b>proposals only</b> — draft PRs, attestations,</li>
+</ul>
+<p>  reports. Nothing merges. Tier-1 stays Tier-1 at 3am.</p>
+<ul>
+<li>- Hard caps on tokens, wall-clock, task count; any cap halts cleanly.</li>
+<li>- Circuit breakers stop; the report explains why. Nobody is paged at 3am.</li>
+<li>- Community tasks process untrusted input (datasheets, bug reports =</li>
+</ul>
+<p>  prompt-injection vectors): maximally sandboxed, no path to the user's own</p>
+<p>  designs — separate process, separate mounts, no credentials.</p>
+<ul>
+<li>- Anything ambiguous → skip and report. Precision over recall, always.</li>
+</ul>
+<p><b>The morning report is the product surface:</b> what ran, what it cost, every</p>
+<p>proposal linked to a diff, decisions ranked, halts explained, and an explicit</p>
+<p>"nothing merged, nothing left this machine except what you pre-approved."</p>
+<p><b>Incentives are reputation, not payment:</b> attestation counts and registry</p>
+<p>standing. Monetizing idle quota invites verification fraud; reputation with</p>
+<p>consequences is self-policing.</p>
+<p><b>Queue coordination:</b> a simple lease on the registry so two users' agents</p>
+<p>don't verify the same part redundantly.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- The registry's verification army is everyone's idle agents, with humans</li>
+</ul>
+<p>  promoted to reviewers.</p>
+<ul>
+<li>- Requires the fingerprint queue (ADR-0006), reducer (ADR-0007), and registry</li>
+</ul>
+<p>  trust tiers (ADR-0010) — staged accordingly; daytime tooling is built with</p>
+<p>  "unattended mode" as a known future consumer (clean halts, resumable tasks,</p>
+<p>  machine-readable results).</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

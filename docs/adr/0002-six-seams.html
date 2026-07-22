@@ -1,0 +1,63 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0002: Six seams, and an intent-based, MCP-first API — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0002</div><h1>ADR-0002: Six seams, and an intent-based, MCP-first API</h1>
+<p><b>Status:</b> accepted</p>
+<h2>Context</h2>
+<p>We must (a) stay able to make major architecture changes — including swapping the</p>
+<p>geometry kernel — without a rewrite, and (b) stop agents falling back to shelling</p>
+<p>out to FreeCAD for complex curves, which happens because that API is familiar and</p>
+<p>lets them model <i>blind</i>.</p>
+<h2>Decision</h2>
+<p><b>1. Everything swappable lives behind one of six seams</b> (<code>gitcad.seams</code>):</p>
+<p><code>Kernel</code>, <code>IdentityService</code>, <code>DocumentModel</code>, <code>Renderer</code>, <code>DrawingEngine</code>,</p>
+<p><code>Storage</code>. Agents work <i>inside</i> a seam, never across one. A "major architecture</p>
+<p>change" should mean writing a new backend for one seam. Adding or widening a seam</p>
+<p>requires human sign-off — the small, narrow interface set is the property that</p>
+<p>makes change cheap, and it erodes if seams multiply.</p>
+<p><b>2. The <code>Kernel</code> API is intent-based, not control-point-based.</b> Callers state</p>
+<p>what must be true ("through these points, tangent to that face, G2-continuous with</p>
+<p>that edge") and the kernel solves the geometry. Raw NURBS control-point authoring</p>
+<p>is exactly what agents cannot do without visualization.</p>
+<p><b>3. The kernel is a bought dependency, not our invention.</b> OCCT via</p>
+<p><code>cadquery-ocp</code>. All OCP imports live in <code>gitcad.kernel.occt</code> and nowhere else.</p>
+<p>Rationale: Fornjot spent ~4 years writing a b-rep kernel from scratch and</p>
+<p>concluded its goals were not reached. We do not repeat that.</p>
+<p><b>4. MCP is the primary interface.</b> The MCP tool surface is designed first; the</p>
+<p>Python API is a thin binding over the same handlers. An interface that everything</p>
+<p>actually uses does not rot.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Verification is first-class: <code>Kernel.validate</code> / <code>.measure</code> / <code>.entities</code> return</li>
+</ul>
+<p>  machine-readable data so agents model by <i>checking</i>, not hoping.</p>
+<ul>
+<li>- A future Rust kernel (Truck/Monstertruck) or a mesh kernel (Manifold) can be</li>
+</ul>
+<p>  slotted in behind <code>Kernel</code> without touching the layers above.</p>
+<ul>
+<li>- The null kernel proves the seam: the suite runs with no OCCT installed.</li>
+</ul><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

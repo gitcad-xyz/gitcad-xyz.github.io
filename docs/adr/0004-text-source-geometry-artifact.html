@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0004: Text is source, geometry is a build artifact — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0004</div><h1>ADR-0004: Text is source, geometry is a build artifact</h1>
+<p><b>Status:</b> accepted</p>
+<h2>Context</h2>
+<p>Git fails for CAD today for one reason: files are opaque binary blobs — no diff,</p>
+<p>no blame, no meaningful merge. We want git as the genuine backbone (versioning,</p>
+<p>branching, PRs, rollback), not a blob store.</p>
+<h2>Decision</h2>
+<ul>
+<li>- The <b>model is text</b>: a feature tree serialized canonically (deterministic</li>
+</ul>
+<p>  JSON today; a friendlier surface syntax may layer on later). It diffs, blames,</p>
+<p>  branches, and merges like code. <code>Document.dumps()</code> is byte-stable for equal</p>
+<p>  documents — a hard requirement, enforced by an invariant test.</p>
+<ul>
+<li>- <b>Geometry is a build artifact</b>: <code>.brep</code>, STEP, glTF, PDF, DXF are <i>generated</i></li>
+</ul>
+<p>  by building the model against a kernel. They are content-addressed via</p>
+<p>  <code>Storage.put_artifact</code>, cached, and <b>never committed as source</b>.</p>
+<ul>
+<li>- Because we own the format we get <b>semantic diff for free</b>: mass/volume delta,</li>
+</ul>
+<p>  added/removed features, before/after renders in a PR.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Model migrations are <b>codemods</b> over text — only possible because source is</li>
+</ul>
+<p>  text. Kernel swaps use shadow-run: build old vs new behind the seam, diff the</p>
+<p>  resulting geometry, cut over when divergence is acceptable.</p>
+<ul>
+<li>- <b>Geometric semver</b>: a change that alters geometry output is <i>breaking</i> even if</li>
+</ul>
+<p>  the API signature is unchanged; detected by hashing corpus geometry in CI.</p>
+<ul>
+<li>- <code>.gitignore</code> excludes generated geometry; CI produces and caches it.</li>
+</ul><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

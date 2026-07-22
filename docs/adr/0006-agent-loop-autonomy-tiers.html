@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0006: Agent feedback loop — autonomy tiers and circuit breakers — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0006</div><h1>ADR-0006: Agent feedback loop — autonomy tiers and circuit breakers</h1>
+<p><b>Status:</b> accepted</p>
+<h2>Context</h2>
+<p>The self-healing loop (users' agents file bugs, our agents fix them) is the</p>
+<p>product's engine and its biggest risk. Unbounded, it floods issues, auto-merges</p>
+<p>subtle geometry regressions, and special-cases the kernel into ossified mush.</p>
+<h2>Decision</h2>
+<p><b>Tiered autonomy — never one global "auto-fix" switch:</b></p>
+<table><tr><th>Tier</th><th>Scope</th><th>Gate</th></tr>
+<tr><td>0</td><td>File issue only, no code</td><td>automatic</td></tr>
+<tr><td>1</td><td>Propose patch as PR</td><td><b>human review required</b></td></tr>
+<tr><td>2</td><td>Auto-merge</td><td>only docs / added tests / dep bumps, full green CI</td></tr>
+<tr><td>Never</td><td>Kernel semantics, identity logic, document format</td><td>human sign-off always</td></tr>
+</table>
+<p><b>Hard rule: anything that changes geometric output is never auto-merged,</b></p>
+<p>regardless of test status (ties to geometric semver, ADR-0004).</p>
+<p><b>Dedup at the source:</b> every failure is fingerprinted (<code>gitcad.report</code>);</p>
+<p>identical fingerprints increment an occurrence counter — one issue, not 10,000.</p>
+<p>Occurrence count is the priority signal.</p>
+<p><b>Circuit breakers:</b> hard quotas on issues/hour, open auto-PRs, and agent spend.</p>
+<p>Exceeding a threshold <b>halts and pages a human</b> — a runaway loop fails loud.</p>
+<p><b>Anti-symptom-fixing:</b> every fix PR must name the root cause and the violated</p>
+<p>invariant, add a failing test first, and respect a complexity budget (special-case</p>
+<p>count in kernel adapters) that alarms on growth.</p>
+<h2>Security consequences (must-haves, not later)</h2>
+<ul>
+<li>- <b>Repro scripts are arbitrary code.</b> Auto-running a submitted repro = running</li>
+</ul>
+<p>  untrusted code. Sandbox hard: container, no network, no secrets, CPU/mem caps,</p>
+<p>  ephemeral.</p>
+<ul>
+<li>- <b>Bug reports are untrusted input to the fixing agent</b> — a prompt-injection</li>
+</ul>
+<p>  vector aimed at an agent with commit access. Report content is *data, never</p>
+<p>  instructions*; the Tier-1 human gate is the backstop.</p>
+<ul>
+<li>- During a major architecture change, drop the loop to <b>Tier 0</b> so agents don't</li>
+</ul>
+<p>  patch the code being replaced.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

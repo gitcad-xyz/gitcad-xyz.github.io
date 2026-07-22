@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0005: Three-tier test corpus (invariants over snapshots) — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0005</div><h1>ADR-0005: Three-tier test corpus (invariants over snapshots)</h1>
+<p><b>Status:</b> accepted</p>
+<h2>Context</h2>
+<p>A self-fixing agent loop generates tests. Unchecked, in 18 months you have</p>
+<p>hundreds of thousands of auto-generated snapshot tests that make any architecture</p>
+<p>change impossible — the tests encode the current implementation, so changing it</p>
+<p>turns the suite red and the project ossifies.</p>
+<h2>Decision</h2>
+<p>Tests live in three tiers with <b>different lifetimes</b>:</p>
+<table><tr><th>Tier</th><th>What</th><th>Lifetime</th><th>Location</th></tr>
+<tr><td><b>Invariants</b></td><td>Properties that must always hold, kernel-independent (booleans yield watertight solids; identity survives edits; export→import preserves topology)</td><td><b>Permanent</b></td><td><code>tests/invariants/</code></td></tr>
+<tr><td><b>Golden</b></td><td>Small, curated, hand-written user-visible contracts</td><td>Permanent</td><td><code>tests/golden/</code></td></tr>
+<tr><td><b>Regression</b></td><td>Auto-generated from reduced bug repros</td><td><b>Disposable, bulk-invalidatable</b></td><td><code>tests/regression/</code></td></tr>
+</table>
+<p>Rules:</p>
+<ul>
+<li>- Auto-generated tests are <b>second-class</b>: quarantinable, samplable, and</li>
+</ul>
+<p>  declarable obsolete <i>en masse</i> during a rewrite — no per-test sign-off.</p>
+<ul>
+<li>- Auto-generated tests must pin to the <b>public API only</b>. Reaching into</li>
+</ul>
+<p>  internals cements internals forever — forbidden.</p>
+<ul>
+<li>- Snapshot tests encode <i>implementation</i>; invariants encode <i>meaning</i>. Only</li>
+</ul>
+<p>  invariants survive an architecture change, so <b>invariants are the real spec.</b></p>
+<ul>
+<li>- Promotion (regression → invariant) is human-only and is how a durable property</li>
+</ul>
+<p>  is recognized.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Major architecture changes stay possible: quarantine <code>regression/</code>, keep</li>
+</ul>
+<p>  <code>invariants/</code> + <code>golden/</code> green, shadow-run the new backend against the corpus.</p>
+<ul>
+<li>- The permanent tiers are deliberately small and jealously guarded.</li>
+</ul><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

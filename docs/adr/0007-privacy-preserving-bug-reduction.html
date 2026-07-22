@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0007: Privacy-preserving bug reduction — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0007</div><h1>ADR-0007: Privacy-preserving bug reduction</h1>
+<p><b>Status:</b> accepted</p>
+<h2>Context</h2>
+<p>A useful bug report needs a repro. But users will not upload proprietary</p>
+<p>designs — mechanical/electrical work is frequently confidential or</p>
+<p>export-controlled. "Just redact coordinates" leaks: coordinates <i>are</i> the shape.</p>
+<h2>Decision</h2>
+<p>A submitted issue must include a repro, and the repro is produced by **automated</p>
+<p>test-case reduction on the user's machine** — the local agent recreates the</p>
+<p>failure in a minimal, <i>synthetic</i> model unrelated to the user's design, and the</p>
+<p>user approves the exact payload before anything is transmitted.</p>
+<p>Pipeline (<code>gitcad.report</code>):</p>
+<ol>
+<li>1. <b>Capture</b> the failing op + kernel diagnostic → <code>FailureSignature</code> →</li>
+</ol>
+<p>   <code>fingerprint</code> (no coordinates, safe to transmit, stable across models).</p>
+<ol>
+<li>2. <b>Reduce</b> via delta-debugging (<code>reduce_document</code>): greedily drop features,</li>
+</ol>
+<p>   keeping only what preserves the same fingerprint. Oracle is deterministic —</p>
+<p>   an ideal agent task, fully verifiable.</p>
+<ol>
+<li>3. <b>Scrub</b>: round dimensions, canonicalize coordinates/orientation, strip names</li>
+</ol>
+<p>   and comments.</p>
+<ol>
+<li>4. <b>Verify twice</b>: reduced case still trips the same fingerprint; similarity</li>
+</ol>
+<p>   check confirms it no longer resembles the original.</p>
+<ol>
+<li>5. <b>Approve</b>: show the user the full minimal script + fingerprint + env. Nothing</li>
+</ol>
+<p>   hidden. They click send.</p>
+<p>Reduction beats redaction categorically: the submitted artifact **is not the</p>
+<p>user's geometry** — it's a new synthetic construction hitting the same code path.</p>
+<p>Nothing to leak because nothing was carried over. And a 15-line repro is</p>
+<p><i>reviewable</i>; a 4,000-feature assembly never gets legal approval.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- <b>Fallbacks</b> when reduction won't converge (some bugs need the complexity):</li>
+</ul>
+<p>  fingerprint-only report (zero geometry), or fully local-only bug (nothing</p>
+<p>  uploaded, enterprise mode).</p>
+<ul>
+<li>- <b>Synthetic amplification:</b> from a fingerprint-only report, our own fuzzer can</li>
+</ul>
+<p>  search for a synthetic reproducer — coverage with no user data at all.</p>
+<ul>
+<li>- <b>A publishable corpus:</b> every repro is synthetic and unrelated to real</li>
+</ul>
+<p>  designs, so the whole regression corpus is legally clean to open-source — a</p>
+<p>  public good and a moat no incumbent (whose bug DBs are locked in customer</p>
+<p>  geometry) can match.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

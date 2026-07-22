@@ -1,0 +1,48 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0001: Record architecture decisions — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0001</div><h1>ADR-0001: Record architecture decisions</h1>
+<p><b>Status:</b> accepted</p>
+<h2>Context</h2>
+<p>gitcad is developed largely by agents. Agents drift badly without an explicit,</p>
+<p>durable statement of <i>intent</i> — they optimize the code in front of them and lose</p>
+<p>the plot. Code and auto-generated tests capture <i>what is</i>; they do not capture</p>
+<p><i>why</i>, or <i>what must never change</i>.</p>
+<h2>Decision</h2>
+<p>We keep Architecture Decision Records in <code>docs/adr/</code>. Each ADR is short, numbered,</p>
+<p>and immutable once accepted (superseded by a new ADR, never edited away). The set</p>
+<p>of accepted ADRs plus <code>CLAUDE.md</code> is the <b>durable spec</b>. Everything else —</p>
+<p>issues, snapshot tests, patches — is disposable evidence.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Agents are pointed at the ADRs and the constitution before touching code.</li>
+<li>- Changing a decision means writing a new ADR that supersedes the old one, with a</li>
+</ul>
+<p>  human sign-off (see <code>CODEOWNERS</code>).</p>
+<ul>
+<li>- The core principle running through all ADRs: **separate the durable spec from</li>
+</ul>
+<p>  the disposable evidence.**</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0008: The Part standard — one unit across all domains — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0008</div><h1>ADR-0008: The Part standard — one unit across all domains</h1>
+<p><b>Status:</b> accepted — interchange contract; most change-resistant thing we own</p>
+<h2>Context</h2>
+<p>gitcad is mechanical + electrical with <b>equal weight</b>, and real products are</p>
+<p>heterogeneous assemblies: enclosures containing boards containing sub-assemblies.</p>
+<p>An interchange contract must be committed <i>before</i> two implementations exist,</p>
+<p>not extracted afterward — this is the one place where "let the core emerge"</p>
+<p>does not apply.</p>
+<h2>Decision</h2>
+<p><b>1. The Part is the universal unit — and an Assembly is just a Part.</b></p>
+<blockquote>A <b>Part</b> = a manifest (domain-neutral) + a body (domain-specific) + an</blockquote>
+<blockquote>interface (domain-neutral). An <b>Assembly</b> is a Part whose body is</blockquote>
+<blockquote><i>composition</i> instead of geometry or netlist.</blockquote>
+<p>Recursion falls out: assemblies contain parts of any domain, including other</p>
+<p>assemblies, with no special cases.</p>
+<p><b>2. The manifest (<code>part.json</code>)</b> is owned by core:</p>
+<pre><code>{
+  &quot;id&quot;: &quot;prt_9f2c...&quot;,        // stable forever; assigned at creation, never derived from path/name
+  &quot;name&quot;: &quot;main-board&quot;,
+  &quot;domain&quot;: &quot;ecad&quot;,            // mech | ecad | assembly | (open set)
+  &quot;version&quot;: &quot;1.4.2&quot;,          // interface-semver, ADR-0009
+  &quot;interface&quot;: { ... },        // see below
+  &quot;deps&quot;: { &quot;prt_...&quot;: &quot;^1.4&quot; },
+  &quot;body&quot;: { ... }              // domain-specific; core never parses foreign bodies
+}</code></pre>
+<p><b>3. The interface</b> is the domain-neutral projection of any part. Assemblies</p>
+<p>depend on interfaces, never internals:</p>
+<ul>
+<li>- <b>envelope</b> — bounding geometry. v1: axis-aligned box <code>{origin, dx, dy, dz}</code></li>
+</ul>
+<p>  (machine-checkable fit tests with no kernel); an optional content-addressed</p>
+<p>  exact-geometry artifact can accompany it.</p>
+<ul>
+<li>- <b>frames</b> — named coordinate frames (origin + z/x axes): datums, mounting</li>
+</ul>
+<p>  points, connector locations.</p>
+<ul>
+<li>- <b>ports</b> — typed connection points bound to frames, with an open namespaced</li>
+</ul>
+<p>  type vocabulary (<code>mech.bolt</code>, <code>elec.pin</code>, <code>elec.connector</code>, later <code>therm.*</code>).</p>
+<p>  Core standardizes the <i>structure</i>; domains extend the vocabulary.</p>
+<ul>
+<li>- <b>properties</b> — informational data (mass, part number). Never load-bearing.</li>
+</ul>
+<p><b>4. Assemblies</b> place instances by explicit rigid transform and declare</p>
+<p><b>mates</b> between ports. v1 deliberately has <i>no constraint solver</i>: mates are</p>
+<p><b>checks</b> (type compatibility + positional coincidence after transforms), not</p>
+<p>solvers. Assembly validation = interface checking; a solver can come later</p>
+<p>behind the same data model.</p>
+<p><b>5. Stable identity extends upward</b> (ADR-0003): the part <code>id</code> and port/frame</p>
+<p><i>names</i> are the durable references. An assembly mates <code>prt_9f2c…#mnt_1</code>, never</p>
+<p>"hole 3".</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Cross-domain co-design is structural: the enclosure mates the PCB's</li>
+</ul>
+<p>  <code>mech.bolt</code> ports without understanding schematics.</p>
+<ul>
+<li>- The manifest schema is CODEOWNERS-protected; every schema change needs a</li>
+</ul>
+<p>  migration story.</p>
+<ul>
+<li>- Multi-board systems (Altium's separate project type) are just assemblies.</li>
+</ul><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page rebuilds on every push to main</footer></body></html>
