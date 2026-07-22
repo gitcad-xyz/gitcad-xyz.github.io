@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>0014. Exploded views are projections; mates get semantics before a solver — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0014</div><h1>0014. Exploded views are projections; mates get semantics before a solver</h1>
+<p>Date: 2026-07-22</p>
+<p>Status: Accepted</p>
+<h2>Context</h2>
+<p>Two related SolidWorks-class features remain undesigned: exploded assembly</p>
+<p>views and a mate solver. Both touch the same question: what does an assembly's</p>
+<p>text <i>mean</i>?</p>
+<p>Today (ADR-0008) an assembly is instances with explicit transforms plus</p>
+<p><code>Mate</code> records that are <b>checked, not solved</b>: `asm.mate("a.port",</p>
+<p>"b.port")` validates that the two ports coincide under the given transforms.</p>
+<p>The transforms are the truth; mates are assertions about them.</p>
+<p>A full mate solver inverts that: transforms become derived outputs of</p>
+<p>mate constraints (coincident, concentric, distance...). That is a 3D</p>
+<p>constraint system with all the branch-multiplicity problems of ADR-0013,</p>
+<p>multiplied by rigid-body DOF bookkeeping.</p>
+<h2>Decision</h2>
+<p><b>Exploded views: a projection, shipped now.</b> An exploded view is a display</p>
+<p>transform, never a model edit — the assembly text does not change. Explode</p>
+<p>offsets live in a view spec (<code>view/exploded.part.json</code> pattern from the</p>
+<p>dogfood, promoted to a first-class <code>ExplodedView</code> document: per-instance</p>
+<p>offset vectors + optional trace lines). Renderers (viewer, drawing engine)</p>
+<p>apply offsets at draw time. Auto-explode derives default offsets from mate</p>
+<p>directions: each instance moves along the axis of its mate port frame,</p>
+<p>ordered by assembly depth. This is pure geometry derivation — deterministic,</p>
+<p>no solver.</p>
+<p>**Mates: grow semantics inside the checked model, solver stays out of the</p>
+<p>document.** The mate vocabulary extends from "ports coincide" to typed</p>
+<p>relations (coincident, concentric, distance, angle), each still a *checked</p>
+<p>assertion* against explicit transforms. A <code>mate_solve</code> authoring tool (same</p>
+<p>philosophy as ADR-0013) can compute transforms that satisfy the mates —</p>
+<p>seeded from current transforms, branch pinned by the seed — and writes the</p>
+<p>solved transforms back into the assembly text. Build never solves; it only</p>
+<p>re-checks. Interference (existing exact check) runs after any solve as the</p>
+<p>sanity gate.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Assembly text stays the deterministic truth; two machines can never</li>
+</ul>
+<p>  disagree about where a part is (ADR-0004/0006 preserved).</p>
+<ul>
+<li>- Exploded views need no new kernel capability and cannot corrupt a model —</li>
+</ul>
+<p>  worst case is a silly-looking drawing.</p>
+<ul>
+<li>- The mate solver becomes an incremental authoring feature: each new mate</li>
+</ul>
+<p>  type ships with its check first (build-time, cheap, deterministic), then</p>
+<p>  its solve support (authoring-time). A mate type without solve support is</p>
+<p>  still useful as a design-rule assertion.</p>
+<ul>
+<li>- Drawing integration: <code>assembly_drawing</code> (FR3) gains an <code>exploded=</code> option</li>
+</ul>
+<p>  consuming the same <code>ExplodedView</code> spec, with balloon anchors following the</p>
+<p>  offsets — one spec drives viewer, drawing, and docs renders.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>

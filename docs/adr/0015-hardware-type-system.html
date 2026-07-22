@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>0015. A type system for hardware: interfaces carry envelopes, connections type-check — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0015</div><h1>0015. A type system for hardware: interfaces carry envelopes, connections type-check</h1>
+<p>Date: 2026-07-23</p>
+<p>Status: Accepted</p>
+<h2>Context</h2>
+<p>Incumbent tools check <i>roles</i> (an output driving an output) but not</p>
+<p><i>envelopes</i> (5V driving a 3.6V-max pin), because their part libraries are</p>
+<p>drawings with strings attached. gitcad's parts are MPN-atomic with</p>
+<p>machine-readable properties (ADR-0010), its ports are typed (ADR-0008), and</p>
+<p>its checks run headless in CI. That combination makes the missing check</p>
+<p>possible: **connecting two interfaces is a typed operation, and a connection</p>
+<p>outside either side's envelope is a design-time error** — the class of bug</p>
+<p>that today survives until bring-up smoke.</p>
+<h2>Decision</h2>
+<p>Interfaces gain machine-checkable <b>envelopes</b>; checks compare envelopes</p>
+<p>across every connection. Staged by domain:</p>
+<h3>v1 (this ADR, implemented now): electrical envelopes</h3>
+<p>Pin-level specs ride in the component's free-form `<code>attrs</code>` under a</p>
+<p>documented key — no schema change, additive and optional:</p>
+<pre><code>attrs[&quot;pin_specs&quot;] = {
+  &quot;&lt;pin number&gt;&quot;: {
+    &quot;v_abs_max&quot;: 3.6,      # absolute maximum voltage on this pin
+    &quot;v_op_min&quot;: 2.7,       # minimum operating voltage (power pins)
+    &quot;i_draw_ma&quot;: 12,       # current this pin draws from its rail
+    &quot;i_source_ma&quot;: 150,    # current this pin can source (regulator outputs)
+  }, ...
+}</code></pre>
+<p>Net voltages derive from the design itself, deterministically:</p>
+<ol>
+<li>1. explicit `<code>net_specs</code>` (optional, additive field on the schematic:</li>
+</ol>
+<p>   `<code>{"VBAT": {"v": 3.7}}</code>`) always wins;</p>
+<ol>
+<li>2. else the power-net <b>name</b> is parsed — engineers already encode volts</li>
+</ol>
+<p>   there: `<code>+3V3</code><code> → 3.3, </code><code>+5V_PUMP</code><code> → 5.0, </code><code>12V</code><code> → 12.0, </code><code>GND</code>`/</p>
+<p>   `<code>AGND</code><code>/</code><code>VSS</code>` → 0. A name that parses is a contract, not a comment.</p>
+<p>Checks (`<code>ecad/envelope.py</code>`, code:detail violations, transmit-safe):</p>
+<ul>
+<li>- <b>pin-overvoltage</b> — net voltage exceeds a connected pin's `<code>v_abs_max</code>`</li>
+<li>- <b>pin-underpowered</b> — a power pin's `<code>v_op_min</code>` exceeds its rail</li>
+<li>- <b>rail-overload</b> — Σ `<code>i_draw_ma</code>` on a rail exceeds the minimum</li>
+</ul>
+<p>  `<code>i_source_ma</code>` among its sources; utilization reported per rail even</p>
+<p>  when green (a 96%-loaded rail is information)</p>
+<p>Specs are optional everywhere: a part without specs produces no violations</p>
+<p>and no false confidence — coverage is REPORTED (pins-with-specs count) so</p>
+<p>"all green" cannot be confused with "nothing checked" (same honesty rule as</p>
+<p>the null kernel's `<code>geometry_checked: False</code>`).</p>
+<h3>v2 (designed, later): mechanical fits</h3>
+<p>The same pattern on mech ports: thread class + engagement length, press-fit</p>
+<p>interference class vs. material, torque spec vs. boss. Envelope keys on</p>
+<p>`<code>Port.spec</code>`; the interference engine already computes the geometry.</p>
+<h3>Budgets (with v1): roll-ups as checks</h3>
+<p>`<code>power_budget(schematic)</code>` returns per-rail draw vs. capacity. Mass and</p>
+<p>cost roll-ups follow the same shape on the mech/BOM side (already have</p>
+<p>`<code>model_mass</code><code> and </code><code>assembly_bom</code>`); requirements-as-code (a future ADR)</p>
+<p>will bind these to named limits.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Registry parts become more valuable as they gain specs — a datasheet</li>
+</ul>
+<p>  fact transcribed once protects every design that ever places the part.</p>
+<p>  Trust tiers (ADR-0010) apply: spec'd + reviewed parts outrank bare ones.</p>
+<ul>
+<li>- Net names become load-bearing where they already were by convention.</li>
+</ul>
+<p>  `<code>net_specs</code>` exists precisely for the exceptions (VBAT, mid-rails).</p>
+<ul>
+<li>- No schema break: `<code>pin_specs</code><code>/</code><code>net_specs</code>` are additive and optional;</li>
+</ul>
+<p>  documents without them are unchanged byte-for-byte.</p>
+<ul>
+<li>- ERC's role matrix and the envelope check stay separate reports — roles</li>
+</ul>
+<p>  are topology, envelopes are physics; a design can pass one and fail the</p>
+<p>  other, and the violation names say which.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>

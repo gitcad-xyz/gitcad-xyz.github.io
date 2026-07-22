@@ -1,0 +1,105 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>0013. Sketch constraints: solved at authoring time, never at build time — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0013</div><h1>0013. Sketch constraints: solved at authoring time, never at build time</h1>
+<p>Date: 2026-07-22</p>
+<p>Status: Accepted</p>
+<h2>Context</h2>
+<p>SolidWorks-class sketching is constraint-driven: the user draws roughly, then</p>
+<p>coincident/parallel/dimension constraints pull the geometry exact. gitcad</p>
+<p>profiles today are explicit coordinates (<code>Profile.line_to(30, 0)</code>), which is</p>
+<p>precise but pushes all arithmetic onto the author — and our authors are mostly</p>
+<p>agents, who are good at arithmetic but bad at <i>keeping</i> dozens of derived</p>
+<p>coordinates consistent when one dimension changes.</p>
+<p>The tempting design is a constraint solver in the build loop: store</p>
+<p>constraints in the document, solve on every rebuild. That is how interactive</p>
+<p>CAD works, and it is wrong for gitcad:</p>
+<ol>
+<li>1. <b>Determinism.</b> A numeric solver (Newton on the constraint Jacobian) has</li>
+</ol>
+<p>   solution multiplicity — mirrored and flipped branches satisfy the same</p>
+<p>   constraints. Which branch you get depends on the initial guess and solver</p>
+<p>   internals. A document that builds differently on two machines, or after a</p>
+<p>   solver upgrade, violates ADR-0004's byte-canonical → geometry-deterministic</p>
+<p>   chain and makes "a geometry change is a breaking change" (ADR-0006)</p>
+<p>   unenforceable.</p>
+<ol>
+<li>2. <b>Debuggability.</b> When a build-time solve fails or jumps branches, the</li>
+</ol>
+<p>   failure surfaces far from the edit that caused it, in a file the agent may</p>
+<p>   not even be touching.</p>
+<h2>Decision</h2>
+<p>Constraints are an <b>authoring-time tool</b>; the document format stays</p>
+<p>solved-coordinates-only.</p>
+<ul>
+<li>- New module <code>gitcad.sketch_solver</code> (mech): a <code>ConstraintSketch</code> builder that</li>
+</ul>
+<p>  accepts entities (points, lines, arcs) + constraints (coincident,</p>
+<p>  horizontal/vertical, parallel, perpendicular, tangent, equal, distance,</p>
+<p>  angle, radius) and <b>emits a plain <code>Profile</code></b> — the same params dict the</p>
+<p>  kernel already consumes. 2D-only, Newton–Raphson on the residual vector with</p>
+<p>  the sketch's drawn coordinates as the initial guess (that choice of guess is</p>
+<p>  what pins the intended branch).</p>
+<ul>
+<li>- The solve happens in the agent/MCP call (<code>sketch_solve</code> tool), not in</li>
+</ul>
+<p>  <code>Document.build</code>. What lands in the document is the solved, exact profile —</p>
+<p>  reviewable, diffable, and rebuilt identically forever.</p>
+<ul>
+<li>- The <i>constraint source</i> may be kept alongside as an annotation</li>
+</ul>
+<p>  (<code>params["constraints_src"]</code>, ignored by the build) so a later edit can</p>
+<p>  re-solve from intent instead of hand-editing coordinates. It is</p>
+<p>  documentation, not input: deleting it changes nothing about the geometry.</p>
+<ul>
+<li>- Solver failures (over/under-constrained, non-convergence) are authoring</li>
+</ul>
+<p>  errors reported with the residual per constraint — never a build failure.</p>
+<ul>
+<li>- Degrees-of-freedom accounting is part of the result (<code>dof</code> remaining), so an</li>
+</ul>
+<p>  agent can see "under-constrained by 2" and add the missing constraints</p>
+<p>  instead of trusting a coincidentally-right solution.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Document format unchanged — no migration, no breaking change, ADR-0004</li>
+</ul>
+<p>  intact. Solved profiles from any other tool remain first-class.</p>
+<ul>
+<li>- Parametric re-solve is explicit: change a dimension in the constraint</li>
+</ul>
+<p>  source, call <code>sketch_solve</code>, get a new exact profile, diff it. The geometry</p>
+<p>  change is visible in review, exactly where ADR-0006 wants it.</p>
+<ul>
+<li>- We accept that constraint intent can drift from the solved profile when</li>
+</ul>
+<p>  someone edits coordinates directly. The <code>constraints_src</code> annotation is</p>
+<p>  best-effort documentation; the solved coordinates are always the truth.</p>
+<ul>
+<li>- The solver can start small (the nine constraint kinds above cover the</li>
+</ul>
+<p>  SolidWorks intro curriculum) and grow without touching the kernel or the</p>
+<p>  document schema.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>

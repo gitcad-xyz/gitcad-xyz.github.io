@@ -37,6 +37,15 @@ collision, measured in mm3. Requires the OCCT kernel.</p>
 <p>Validate an assembly body (instances + mates) against its parts'
 interfaces: port-type compatibility and positional coincidence — the
 cross-domain co-design check (ADR-0008).</p>
+<h3>board_annotate</h3>
+<pre class="sig"><code>board_annotate(board: &#x27;str&#x27;, schematic: &#x27;str&#x27;, overwrite_conflicts: &#x27;bool&#x27; = False) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Forward annotation (the ECO write path): push the schematic's netlist
+onto board pads, matched by ref + pin number. Mismatches are reported,
+never guessed; existing conflicting nets are kept unless
+overwrite_conflicts. Returns the annotated board text + sync report +
+board_parity result. For multi-board systems pass the merged system
+schematic — refs_missing_on_board then just means 'lives on another
+board'.</p>
 <h3>board_connectivity</h3>
 <pre class="sig"><code>board_connectivity(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Copper connectivity check: every net's pads must be joined by actual
@@ -72,6 +81,14 @@ SMD side enforced. Returns the updated board text.</p>
 <h3>board_validate</h3>
 <pre class="sig"><code>board_validate(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Fab-readiness checks on a board document. Machine-readable.</p>
+<h3>design_review</h3>
+<pre class="sig"><code>design_review(repo: &#x27;str&#x27;, base: &#x27;str&#x27;, head: &#x27;str&#x27; = &#x27;HEAD&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Review the design changes between two git refs: per-file semantic
+diff (features/components/volume/interface-semver), the CHECK DELTA
+(violations introduced / fixed / pre-existing — ERC, envelopes, board
+validation, DRC), and before/after SVG renders. gate_ok fails on any
+INTRODUCED violation; pre-existing reds don't block (not this PR's
+fault). The markdown field is ready to post as a PR comment.</p>
 <h3>feature_add</h3>
 <pre class="sig"><code>feature_add(model: &#x27;str&#x27;, op: &#x27;str&#x27;, params: &#x27;dict[str, Any] | None&#x27; = None, inputs: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Append an intent-level feature. Returns the new model text and the stable
@@ -94,6 +111,12 @@ the mechanical manufacturing deliverable.</p>
 <p>Import existing mechanical work (STEP or FreeCAD .FCStd) into a gitcad
 model. Returns the model text plus an honest report of what was imported,
 approximated, and dropped. Requires the OCCT kernel.</p>
+<h3>model_mass</h3>
+<pre class="sig"><code>model_mass(model: &#x27;str&#x27;, density_g_cm3: &#x27;float&#x27; = 1.0) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Physical mass properties of the model's final body: volume (mm^3),
+mass (g) at the given density (g/cm^3), center of mass, and the
+unit-density inertia tensor about the COM. The engineering numbers a
+drawing title block or a motion study starts from.</p>
 <h3>model_measure</h3>
 <pre class="sig"><code>model_measure(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build against the best available kernel and return mass properties per
@@ -122,17 +145,71 @@ The check that stops shipping a breaking change as a patch.</p>
 <p>Project-Releaser-as-code: run EVERY check (validate/ERC/parity/DRC/fab)
 across the given model/board/schematic documents; only on all-green write
 the full artifact set + sha256 manifest. Red checks = no release.</p>
+<h3>schematic_author</h3>
+<pre class="sig"><code>schematic_author(name: &#x27;str&#x27;, ops: &#x27;list[list]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Author a DRAWN schematic sheet — symbols placed, wires routed, labels
+and power flags set — and get back the netlist derived from the drawing
+(same engine as the KiCad importer), ERC, sheet parity, and a KiCad-style
+SVG. ops is a sequence of:
+  ["place", ref, kind, x, y, {value, rot, footprint, pin_types, left,
+   right, n}]  (kinds: resistor|capacitor|led|diode|ic|header)
+  ["connect", refA, pinA, refB, pinB, [via points...]]
+  ["wire", [[x, y], ...]]   ["junction", x, y]
+  ["label", net, x, y]      ["power", net, x, y]</p>
 <h3>schematic_board_parity</h3>
 <pre class="sig"><code>schematic_board_parity(schematic: &#x27;str&#x27;, board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Schematic &lt;-&gt; board consistency (the ECO check): missing components,
 missing/extra connections, net mismatches — in both directions.</p>
+<h3>schematic_envelope</h3>
+<pre class="sig"><code>schematic_envelope(schematic: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>The hardware type system, electrical v1 (ADR-0015): net voltages
+derived from rail names + net_specs, checked against each pin's
+v_abs_max/v_op_min, and rail current draw vs. source capacity —
+overvoltage caught at design time, not bring-up. Coverage is reported
+(pins_with_specs) so green never masquerades as verified. Includes the
+per-rail power budget.</p>
 <h3>schematic_erc</h3>
 <pre class="sig"><code>schematic_erc(schematic: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Electrical rule check on a schematic document: pin-type conflicts,
 undriven inputs, unpowered power pins, unconnected pins, degenerate nets.
 'The schematic compiles' as a machine-decidable statement.</p>
+<h3>schematic_import</h3>
+<pre class="sig"><code>schematic_import(path: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Import a KiCad schematic (.kicad_sch) into a gitcad schematic. The
+netlist is derived the way KiCad derives it — geometrically, from
+wire-pin connectivity, junctions, labels and power symbols — and the
+report's wire_end_hit_pct self-checks the symbol transforms. Pure
+Python — no kernel needed.</p>
+<h3>schematic_render</h3>
+<pre class="sig"><code>schematic_render(schematic: &#x27;str&#x27;, path: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Render the schematic DIAGRAM (SVG) — symbols, net lanes, junctions:
+the human review surface before layout. Auto-layout; manual placement
+honored via component attrs["at"].</p>
+<h3>schematic_sim</h3>
+<pre class="sig"><code>schematic_sim(schematic: &#x27;str&#x27;, checks: &#x27;list[dict] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Simulation as tests: export the schematic to SPICE (rails become
+ideal sources by the same name contract the envelope checker uses;
+unmodeled parts reported, never dropped) and — when ngspice is
+installed and checks given — run an operating-point analysis asserting
+node voltages: checks=[{"node": "OUT", "min": 3.2, "max": 3.4}].</p>
+<h3>schematic_system_erc</h3>
+<pre class="sig"><code>schematic_system_erc(schematics: &#x27;list[str]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Merge multiple board schematics (canonical gitcad text) into one
+system schematic — nets union by NAME (the cross-connector contract) —
+and run ERC on the whole circuit. This is how multi-board designs are
+checked: per-sheet ERC flags interface signals as single-pin; system
+ERC sees the real nets.</p>
 <h3>semantic_diff</h3>
 <pre class="sig"><code>semantic_diff(old: &#x27;str&#x27;, new: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Meaning-level diff between two revisions of the same document text:
 features added/removed/changed by stable id, volume delta, board deltas,
-or interface-semver classification for parts. The PR review surface.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
+or interface-semver classification for parts. The PR review surface.</p>
+<h3>sketch_solve</h3>
+<pre class="sig"><code>sketch_solve(points: &#x27;dict[str, list[float]]&#x27;, constraints: &#x27;list[list]&#x27;, profile: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Solve a 2D constraint sketch (ADR-0013) and return exact coordinates
+— authoring-time only; the solved profile is what goes in the document.
+points: {name: [x, y]} rough positions (they pin the solution branch).
+constraints: [[kind, ...args]] with kinds fix(p,x,y), coincident(p,q),
+horizontal(p,q), vertical(p,q), distance(p,q,d), angle(p,q,deg),
+parallel(p,q,r,s), perpendicular(p,q,r,s), equal_length(p,q,r,s).
+profile: optional point order to emit a closed Profile params dict.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
