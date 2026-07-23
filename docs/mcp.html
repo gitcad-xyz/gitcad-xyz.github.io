@@ -26,6 +26,14 @@
   footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
 </style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / mcp</div><h1>MCP tool reference</h1>
 <p>The primary interface. Generated from the live registry — signatures and docs come from the code itself.</p>
+<h3>assembly_fasteners</h3>
+<pre class="sig"><code>assembly_fasteners(assembly_body: &#x27;dict[str, Any]&#x27;, parts: &#x27;list[str]&#x27;, default_length: &#x27;float&#x27; = 8.0) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Toolbox, agent-first (SW-map P6): populate every unmated mech.bolt
+port with a correctly sized ISO 4762 bolt instance + mate, then run
+the standard assembly validation as the proof. Sizing comes from the
+port's spec (thread "M3", optional length); specless ports are
+reported, never guessed. Returns the additions, skips, the updated
+assembly body, and the post-populate validation.</p>
 <h3>assembly_interference</h3>
 <pre class="sig"><code>assembly_interference(assembly_body: &#x27;dict[str, Any]&#x27;, models: &#x27;dict[str, str]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>EXACT interference check: build each instanced part's real geometry
@@ -166,6 +174,15 @@ id assigned to the feature (never an ordinal index).</p>
 chip(size='0603'), soic(n=8, pitch=1.27), qfn(n=16, pitch=0.5, ep=2.1),
 header(n=6, rows=2). Returns the footprint (pads + courtyard) ready for
 a Board component or footprint_to_part registry publishing.</p>
+<h3>model_configurations</h3>
+<pre class="sig"><code>model_configurations(model: &#x27;str&#x27;, set: &#x27;dict[str, dict[str, Any]] | None&#x27; = None, delete: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Configurations / design tables (SW-map P2): one document IS a
+product family. Each configuration is a named override set of
+existing parameters ('M3x10': {'L': 10}); the whole table re-resolves
+per variant so dependent expressions follow. Build any variant with
+model ops' <code>config</code> argument. Returns the model text plus each
+configuration's fully resolved parameter table — the design table,
+as data.</p>
 <h3>model_drawing</h3>
 <pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and emit a dimensioned 2D drawing (SVG or PDF by file
@@ -197,6 +214,15 @@ feature — the deterministic oracle an agent verifies against.</p>
 <h3>model_new</h3>
 <pre class="sig"><code>model_new() -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Create an empty model; returns its canonical text form.</p>
+<h3>model_parameters</h3>
+<pre class="sig"><code>model_parameters(model: &#x27;str&#x27;, set: &#x27;dict[str, Any] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Named parameters + equations (SW-map P1): read or update the model's
+parameter table. Values are numbers or '=expr' strings ('=W/2 + wall';
+trig in degrees, pi available). Feature params reference them the same
+way — a part becomes a function of its parameters. Re-valuing a
+parameter changes geometry (an ADR-0006 breaking change, gated like
+any other) but never re-identifies features. Returns the model text
+and the fully resolved table.</p>
 <h3>model_recognize</h3>
 <pre class="sig"><code>model_recognize(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Convert dead imported geometry back into a parameterized model — WITH
@@ -323,6 +349,17 @@ ERC sees the real nets.</p>
 <p>Meaning-level diff between two revisions of the same document text:
 features added/removed/changed by stable id, volume delta, board deltas,
 or interface-semver classification for parts. The PR review surface.</p>
+<h3>sheetmetal_author</h3>
+<pre class="sig"><code>sheetmetal_author(spec: &#x27;dict[str, Any]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Sheet metal (SW-map P3) — the mech Gerber. `<code>spec</code>` declares the
+part: {name, width, height, thickness, k_factor, bend_radius,
+flanges: [{edge: n|e|s|w, length, angle, direction, radius, holes:
+[{u, v, diameter}], children: [...same, edge: "end"]}], base_holes}.
+Returns the canonical text, DFM validation (hole-to-bend, setback,
+radius rules), the exact K-factor flat pattern, the shop DXF (layers
+CUT/BEND_UP/BEND_DOWN/HOLES), the bend table, and the folded solid
+as an ordinary model document (viewer/STEP/interference all apply;
+sharp-corner bends — the flat pattern is the manufacturing truth).</p>
 <h3>sketch_solve</h3>
 <pre class="sig"><code>sketch_solve(points: &#x27;dict[str, list[float]]&#x27;, constraints: &#x27;list[list]&#x27;, profile: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Solve a 2D constraint sketch (ADR-0013) and return exact coordinates
