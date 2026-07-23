@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0019 — Certified intervals: the K3 extension to the exactness charter — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0019</div><h1>ADR-0019 — Certified intervals: the K3 extension to the exactness charter</h1>
+<p>Status: accepted (2026-07-23)</p>
+<p>Supersedes nothing; extends ADR-0018 (native kernel) and the exactness</p>
+<p>charter recorded in the kernel coverage plan.</p>
+<h2>Context</h2>
+<p>K1 and K2 hold to a hard rule: **no float ever influences a topological</p>
+<p>decision.** Numbers live in exact fields — ℚ (Fraction), ℚ[π] (PiVal),</p>
+<p>ℚ[√d] (SurdVal) — and anything outside the current field earns an</p>
+<p>honest, stage-named refusal.</p>
+<p>K3 (curves: helices, NURBS, general surface–surface intersection) breaks</p>
+<p>that comfort. The quantities are genuinely transcendental. A coil</p>
+<p>spring's volume is</p>
+<p>    V = π ρ² · L,   L = turns · √((2πR)² + pitch²)</p>
+<p>and <code>√(a·π² + b)</code> lies in <b>no</b> finite algebraic extension of ℚ we can</p>
+<p>close over. A NURBS surface point, the arc length of a free-form edge,</p>
+<p>the intersection parameter of two spline patches — none are exactly</p>
+<p>representable. Pure exactness cannot reach them. We refuse to answer with</p>
+<p>a bare float, because a bare float carries no proof: you cannot tell a</p>
+<p>correct 534.6435 from a rounding artifact.</p>
+<h2>Decision</h2>
+<p>Introduce a fourth number kind: the <b>certified interval</b> <code>CInterval</code></p>
+<p>— a pair of exact rationals <code>[lo, hi]</code> that <i>provably</i> brackets the true</p>
+<p>value, with arithmetic that only ever widens the bracket, never loses</p>
+<p>the enclosure. The charter is restated:</p>
+<blockquote>Every topological decision is made from a <b>certified sign</b>. A sign</blockquote>
+<blockquote>is certified when it comes from exact field arithmetic (K1/K2) <b>or</b></blockquote>
+<blockquote>from a <code>CInterval</code> that strictly excludes zero. If an interval</blockquote>
+<blockquote>straddles zero, the kernel tightens it (more precision) and retries;</blockquote>
+<blockquote>if it cannot certify within budget, it refuses — it never guesses.</blockquote>
+<p>So the spirit is unchanged: <b>no unproven decision.</b> What changes is</p>
+<p>that "proven" now includes "proven by a bracket," not only "proven by an</p>
+<p>exact closed form." A <code>CInterval</code> is not a float with error bars bolted</p>
+<p>on after the fact — the bounds are the primitive, and they are rigorous:</p>
+<p><code>π</code> enters only through a hard-coded, digit-verified rational enclosure;</p>
+<p><code>√</code> returns a rational bracket <code>[a, b]</code> with <code>a² ≤ x ≤ b²</code>; every <code>+ − ×</code></p>
+<p>on rationals is exact, so an interval widens <i>only</i> at the genuinely</p>
+<p>irrational steps and by a <i>bounded, reportable</i> amount.</p>
+<h3>Provenance is first-class</h3>
+<p>A solid now carries a provenance tag:</p>
+<ul>
+<li>- <code>exact</code> — every coordinate and decision is exact field arithmetic</li>
+</ul>
+<p>  (all of K1/K2). <code>forge == ref</code> bit-for-bit; <code>mass_props</code> volume is an</p>
+<p>  exact <code>Fraction</code>/<code>PiVal</code>.</p>
+<ul>
+<li>- <code>certified</code> — some quantity is a <code>CInterval</code>. <code>mass_props</code> returns the</li>
+</ul>
+<p>  interval midpoint as the reported float <b>plus</b> a proven half-width;</p>
+<p>  the true value is guaranteed inside. Decisions were still certified.</p>
+<p>A <code>certified</code> result is never silently mixed with an <code>exact</code> one, and</p>
+<p>the scorecard/report always shows which it is.</p>
+<h3>The oracle relationship inverts, honestly</h3>
+<p>For <code>exact</code> ops, OCCT is the oracle and <code>ref</code> must match it (it does, to</p>
+<p>machine ε). For <code>certified</code> ops the relationship flips: **<code>ref</code> is the</p>
+<p>more principled computation** and OCCT is the approximation. The spring</p>
+<p>is the first witness — <code>ref</code> gives the exact tube volume bracketed to</p>
+<p>arbitrary precision; OCCT's swept-B-rep integration lands 4.4×10⁻⁷ away.</p>
+<p>They agree within OCCT's own tolerance, but it is OCCT that carries the</p>
+<p>error, not <code>ref</code>. The differential test therefore asserts *agreement</p>
+<p>within a stated band*, not bit-identity, for <code>certified</code> models.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- The exact fields (ℚ, ℚ[π], ℚ[√d]) remain the default and the first</li>
+</ul>
+<p>  choice; <code>CInterval</code> is used only where no exact field reaches. A model</p>
+<p>  that <i>could</i> be exact must not silently fall back to an interval.</p>
+<ul>
+<li>- Refusals do not disappear — they move outward. An interval that cannot</li>
+</ul>
+<p>  certify a sign within the precision budget is still a stage-named</p>
+<p>  refusal, not a coin flip.</p>
+<ul>
+<li>- This unblocks K3: interval-certified de Boor for NURBS evaluation,</li>
+</ul>
+<p>  certified marching for SSI, and — first — the helix/pipe family and</p>
+<p>  the coil spring.</p>
+<ul>
+<li>- A future ADR may add a third tag (<code>sampled</code>) for genuinely</li>
+</ul>
+<p>  unbounded-error meshes; K3 does not need it.</p>
+<h2>First implementation (K3.0)</h2>
+<p><code>forgekernel.interval.CInterval</code> (+ <code>pi_interval</code>, rational <code>sqrt</code>),</p>
+<p><code>forgekernel.curve.Helix</code> (arc length as a <code>CInterval</code>) and <code>TubeSolid</code></p>
+<p>(the swept round section; certified volume <code>π ρ² L</code>). The corpus</p>
+<p><code>spring</code> model flips from refusal to a <code>certified</code> build, taking <code>ref</code></p>
+<p>and <code>forge</code> to full corpus coverage.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
