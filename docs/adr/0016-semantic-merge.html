@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>0016. Branch-and-merge design exploration: semantic 3-way merge — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0016</div><h1>0016. Branch-and-merge design exploration: semantic 3-way merge</h1>
+<p>Date: 2026-07-23</p>
+<p>Status: Accepted</p>
+<h2>Context</h2>
+<p>Incumbent CAD cannot branch. Files are binary, identity is ordinal, so two</p>
+<p>people (or two agents) cannot edit the same design in parallel and combine</p>
+<p>the results — the industry's answer is file locking and PLM check-out. That</p>
+<p>forecloses the most powerful design workflow git ever enabled: spawn N</p>
+<p>variants, evaluate all of them against the same gates, merge the winners.</p>
+<p>gitcad already has the two prerequisites nobody else has:</p>
+<ol>
+<li>1. <b>Canonical text</b> (ADR-0004) — designs diff line-by-line, but more</li>
+</ol>
+<p>   importantly they parse, so we can merge <i>meaning</i> instead of lines.</p>
+<ol>
+<li>2. <b>Stable identity</b> (ADR-0003) — features and entities keep their ids</li>
+</ol>
+<p>   across edits, so "both branches touched the same feature" is decidable,</p>
+<p>   which is exactly the question a 3-way merge must answer.</p>
+<h2>Decision</h2>
+<p><b>Merge at the semantic unit, never the text line.</b> A git merge driver</p>
+<p>(<code>gitcad-merge</code>, wired via `<code>.gitattributes</code>`) performs classic 3-way merge</p>
+<p>(base/ours/theirs) where the units are:</p>
+<ul>
+<li>- <b>Models</b>: features, keyed by stable feature id. Compare canonical JSON</li>
+</ul>
+<p>  per feature against base. One side changed → take it; both changed</p>
+<p>  identically → take it; both changed differently → **conflict naming the</p>
+<p>  feature id and op**; modify vs delete → conflict; add/add with the same</p>
+<p>  id but different content → conflict. Merged feature order: base order,</p>
+<p>  then ours-added, then theirs-added, then a stable topological pass so</p>
+<p>  every feature's inputs precede it (build-order validity is restored</p>
+<p>  mechanically, not hoped for).</p>
+<ul>
+<li>- <b>Schematics</b>: components keyed by ref (same 3-way rule on canonical</li>
+</ul>
+<p>  content), and connectivity keyed by <b>pin</b> — each pin's net assignment</p>
+<p>  is a 3-way cell, so a net rename (all pins move together) merges cleanly</p>
+<p>  and only "the same pin moved to two different nets" conflicts.</p>
+<p>  `<code>net_specs</code>` merge per key.</p>
+<ul>
+<li>- Boards and parts: v1 falls back to whole-document 3-way (identical-side</li>
+</ul>
+<p>  shortcuts, conflict when both sides changed) — honest, not silently</p>
+<p>  line-merged. Component/track-level board merge is a later stage.</p>
+<p><b>Conflicts are structured data, not markers.</b> On conflict the driver</p>
+<p>leaves "ours" in the worktree, writes a `<code>&lt;file&gt;.gitcad-conflict.json</code>`</p>
+<p>report naming every conflicted unit with both candidate values, and exits</p>
+<p>nonzero — git marks the path unmerged. An agent (or human) resolves by</p>
+<p>editing the document and `<code>git add</code>`, exactly like code. Text-level</p>
+<p>conflict markers inside canonical JSON would be worse than useless: they</p>
+<p>make the document unparseable for every tool including the resolver.</p>
+<p><b>A merge must rebuild.</b> The driver reloads its own output through the</p>
+<p>document's parser before writing (a merge that doesn't parse is a bug in</p>
+<p>the driver, never shipped state). Geometry/ERC consequences of a clean</p>
+<p>merge are `<code>gitcad-review</code>`'s job on the merge commit — merging and</p>
+<p>verifying stay separate, per the writer/checker rule.</p>
+<p><b>Exploration is the same machinery pointed sideways.</b> N branches, one</p>
+<p>base: run the review/check suite per branch (existing `<code>review_range</code>`)</p>
+<p>and tabulate. No new engine — the merge driver makes the branches</p>
+<p>combinable, the checks make them comparable.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Two agents can work the same model concurrently and merge, conflicting</li>
+</ul>
+<p>  only when they touched the same feature — the file-lock era ends here.</p>
+<ul>
+<li>- The identity service becomes even more load-bearing: changing id</li>
+</ul>
+<p>  semantics now also invalidates merge history reasoning (already flagged</p>
+<p>  human-sign-off territory in ADR-0003; doubly so now).</p>
+<ul>
+<li>- Order restoration via topological sort means a clean merge can reorder</li>
+</ul>
+<p>  features relative to either parent; ids (lineage-based) do not change,</p>
+<p>  and the rebuild gate catches any dependency the sort cannot satisfy.</p>
+<ul>
+<li>- Boards conflict coarsely for now; that is a scope statement, not a</li>
+</ul>
+<p>  limitation of the approach.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>

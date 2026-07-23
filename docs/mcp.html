@@ -46,6 +46,16 @@ overwrite_conflicts. Returns the annotated board text + sync report +
 board_parity result. For multi-board systems pass the merged system
 schematic — refs_missing_on_board then just means 'lives on another
 board'.</p>
+<h3>board_autoroute</h3>
+<pre class="sig"><code>board_autoroute(board: &#x27;str&#x27;, net: &#x27;str&#x27;, grid: &#x27;float&#x27; = 0.25, width: &#x27;float&#x27; = 0.25, clearance: &#x27;float&#x27; = 0.2, layers: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Autorouting assist v1: deterministic grid maze router (Lee) for one
+net — clearance-aware obstacle grid, through-vias on layer change,
+honest refusal when no path exists. The routed copper is ordinary
+tracks/vias; DRC + connectivity gate it like hand routing.</p>
+<h3>board_back_annotate</h3>
+<pre class="sig"><code>board_back_annotate(schematic: &#x27;str&#x27;, board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Reverse ECO: board value edits flow back into the schematic source
+(matched by ref); board-only refs are reported, never invented.</p>
 <h3>board_connectivity</h3>
 <pre class="sig"><code>board_connectivity(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Copper connectivity check: every net's pads must be joined by actual
@@ -60,11 +70,48 @@ hole spacing, edge clearance — against a rule pack (default: conservative
 <pre class="sig"><code>board_export_fab(board: &#x27;str&#x27;, outdir: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Validate and write the full fabrication package: Gerber X2 layers,
 Excellon drill, pick-and-place CSV, manifest.</p>
+<h3>board_gencad</h3>
+<pre class="sig"><code>board_gencad(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>GenCAD 1.4 export — the test/assembly-machine format ($BOARD,
+$PADS/$PADSTACKS, $SHAPES, $COMPONENTS, $DEVICES, $SIGNALS, $ROUTES).
+Section grammar mirrors kicad-cli's GenCAD export; units INCH per the
+installed-base convention.</p>
 <h3>board_import</h3>
 <pre class="sig"><code>board_import(path: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Import an existing KiCad board (.kicad_pcb) into a gitcad board.
 Pure Python — no kernel needed. The report lists every approximation and
 drop (zones, arcs, complex outlines); nothing is lost silently.</p>
+<h3>board_import_altium</h3>
+<pre class="sig"><code>board_import_altium(path: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Import an Altium .PcbDoc saved in ASCII form (components/pads/
+tracks/vias/nets, drops reported). Binary OLE PcbDocs are refused
+with the working migration path (KiCad's Altium importer -&gt; .kicad_pcb
+-&gt; board_import).</p>
+<h3>board_ipc2581</h3>
+<pre class="sig"><code>board_ipc2581(board: &#x27;str&#x27;, origination: &#x27;str&#x27; = &#x27;1970-01-01T00:00:00&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>IPC-2581C export — the modern fab/assembly exchange XML (stackup,
+profile, packages, components, logical nets, per-layer features,
+drills). Structure conformance-benchmarked element-for-element against
+kicad-cli's own IPC-2581 on the same board. Deterministic: pass
+origination only when a customer needs a real date.</p>
+<h3>board_ipcd356</h3>
+<pre class="sig"><code>board_ipcd356(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>IPC-D-356 electrical test netlist (flying probe / bed-of-nails):
+every netted pad and via as fixed-column records, metric units.
+Structure follows the published layout; not yet conformance-run on a
+physical tester.</p>
+<h3>board_length_match</h3>
+<pre class="sig"><code>board_length_match(board: &#x27;str&#x27;, pairs: &#x27;list[list]&#x27;, tol_mm: &#x27;float&#x27; = 1.0) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Matched-pair length check (USB, LVDS, clocks): each [netA, netB]
+pair's routed lengths must agree within tol_mm; unrouted members and
+mismatches are named violations.</p>
+<h3>board_odb</h3>
+<pre class="sig"><code>board_odb(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>ODB++ export — the CAM-exchange directory tree (matrix, per-layer
+features, components, per-span drills + tools, profile, cadnet).
+Structure copied from kicad-cli's own ODB++ export and census-checked
+against it on the real benchmark board. Returns {relpath: content};
+write with export_odb or any file sink.</p>
 <h3>board_pad_position</h3>
 <pre class="sig"><code>board_pad_position(board: &#x27;str&#x27;, pad: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Resolve "REF.pad_name" to absolute board coordinates + side/through/net
@@ -74,6 +121,17 @@ drop (zones, arcs, complex outlines); nothing is lost silently.</p>
 <p>Route a net through waypoints ({"pad": "REF.name"} or {"x","y"},
 optional "layer") — auto-vias on layer changes, wrong-net pads refused,
 SMD side enforced. Returns the updated board text.</p>
+<h3>board_stats</h3>
+<pre class="sig"><code>board_stats(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Board statistics report: area, component counts by side, SMD/PTH
+pads, routed copper length, vias, zones vs keepouts, drill-size
+histogram — kicad-cli's stats as data.</p>
+<h3>board_teardrops</h3>
+<pre class="sig"><code>board_teardrops(board: &#x27;str&#x27;, length_ratio: &#x27;float&#x27; = 1.0, width_ratio: &#x27;float&#x27; = 0.9) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Generate teardrop copper (same-net wedges) where thin tracks meet
+wider via/through-pad barrels — drill-breakout insurance. Idempotent;
+the result is ordinary zones gated by DRC + connectivity like any
+copper edit. Returns the updated board text.</p>
 <h3>board_to_model</h3>
 <pre class="sig"><code>board_to_model(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>The board as a 3D mech model (outline x thickness, mounting holes cut)
@@ -81,6 +139,15 @@ SMD side enforced. Returns the updated board text.</p>
 <h3>board_validate</h3>
 <pre class="sig"><code>board_validate(board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Fab-readiness checks on a board document. Machine-readable.</p>
+<h3>design_merge</h3>
+<pre class="sig"><code>design_merge(base: &#x27;str&#x27;, ours: &#x27;str&#x27;, theirs: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Semantic 3-way merge of a design document (ADR-0016): features by
+stable id for models, components by ref + connectivity by PIN for
+schematics. Parallel edits to different units merge cleanly (a net
+rename merges — pins move together); the same unit changed differently
+returns structured conflicts with both candidates, never text markers.
+Also the git merge driver: gitcad-merge %O %A %B with
+.gitattributes '*.gitcad.json merge=gitcad'.</p>
 <h3>design_review</h3>
 <pre class="sig"><code>design_review(repo: &#x27;str&#x27;, base: &#x27;str&#x27;, head: &#x27;str&#x27; = &#x27;HEAD&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Review the design changes between two git refs: per-file semantic
@@ -93,6 +160,12 @@ fault). The markdown field is ready to post as a PR comment.</p>
 <pre class="sig"><code>feature_add(model: &#x27;str&#x27;, op: &#x27;str&#x27;, params: &#x27;dict[str, Any] | None&#x27; = None, inputs: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Append an intent-level feature. Returns the new model text and the stable
 id assigned to the feature (never an ordinal index).</p>
+<h3>footprint_generate</h3>
+<pre class="sig"><code>footprint_generate(kind: &#x27;str&#x27;, params: &#x27;dict | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Parametric footprint generators (KiCad-map P5) — wizards, agent-first:
+chip(size='0603'), soic(n=8, pitch=1.27), qfn(n=16, pitch=0.5, ep=2.1),
+header(n=6, rows=2). Returns the footprint (pads + courtyard) ready for
+a Board component or footprint_to_part registry publishing.</p>
 <h3>model_drawing</h3>
 <pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and emit a dimensioned 2D drawing (SVG or PDF by file
@@ -140,11 +213,36 @@ backend was available — structure was checked, geometry was NOT.</p>
 <p>Interface-semver release gate (ADR-0009): given old and new part.json
 texts, classify the interface change and verify the version bump suffices.
 The check that stops shipping a breaking change as a patch.</p>
+<h3>pcba_verify</h3>
+<pre class="sig"><code>pcba_verify(part: &#x27;str&#x27;, root: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Enter a PCBA's electrical workflow as one gate: ERC + electrical
+envelopes per referenced schematic, board validation + DRC + copper
+connectivity, and schematic&lt;-&gt;board parity — the Fusion-360 duality:
+a .pcba is mechanical from the outside (envelope, mounting ports, 3D
+body) and this suite is what 'inside' means.</p>
 <h3>project_release</h3>
 <pre class="sig"><code>project_release(sources: &#x27;list[str]&#x27;, outdir: &#x27;str&#x27;, version: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Project-Releaser-as-code: run EVERY check (validate/ERC/parity/DRC/fab)
 across the given model/board/schematic documents; only on all-green write
 the full artifact set + sha256 manifest. Red checks = no release.</p>
+<h3>requirements_verify</h3>
+<pre class="sig"><code>requirements_verify(requirements: &#x27;str&#x27;, root: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Requirements as code: run a canonical requirements document (named
+limits bound to machine checks — mass_max_g, volume_max_mm3,
+bbox_max_mm, erc_clean, envelope_clean, rail_utilization_max,
+drc_clean, interference_clear [assembly-wide pairwise fit within a
+clash budget — mech models AND populated PCBAs]) against the design
+tree at root. Every requirement reports
+measured-vs-limit; one without a check shows as 'unchecked' — visible
+debt, never silent green. markdown field = the executing traceability
+matrix.</p>
+<h3>schematic_annotate</h3>
+<pre class="sig"><code>schematic_annotate(schematic: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Deterministic reference numbering (KiCad-map P4): placeholder refs
+(R?, U?) get the lowest free number per prefix in reading order
+(top-to-bottom, left-to-right); existing numbers never move; nets
+referencing placeholders refuse (ambiguous — annotate before
+connecting). Returns the annotated schematic + the rename map.</p>
 <h3>schematic_author</h3>
 <pre class="sig"><code>schematic_author(name: &#x27;str&#x27;, ops: &#x27;list[list]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Author a DRAWN schematic sheet — symbols placed, wires routed, labels
@@ -155,7 +253,14 @@ SVG. ops is a sequence of:
    right, n}]  (kinds: resistor|capacitor|led|diode|ic|header)
   ["connect", refA, pinA, refB, pinB, [via points...]]
   ["wire", [[x, y], ...]]   ["junction", x, y]
-  ["label", net, x, y]      ["power", net, x, y]</p>
+  ["label", net, x, y]      ["power", net, x, y]
+  ["global_label", net, x, y]   (design-wide across all sheets)
+  ["hier_label", net, x, y]     (child-side sheet-pin attachment)
+  ["sheet", name, x, y, w, h, {"ops": [...child ops...],
+   "pins": {pin: [x, y]}, "ref_map": {childRef: instanceRef},
+   "child": childname}]
+Hierarchies flatten through the same merge as KiCad import; reuse one
+child by placing two sheets with the same ops and distinct ref_maps.</p>
 <h3>schematic_board_parity</h3>
 <pre class="sig"><code>schematic_board_parity(schematic: &#x27;str&#x27;, board: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Schematic &lt;-&gt; board consistency (the ECO check): missing components,
@@ -173,6 +278,10 @@ per-rail power budget.</p>
 <p>Electrical rule check on a schematic document: pin-type conflicts,
 undriven inputs, unpowered power pins, unconnected pins, degenerate nets.
 'The schematic compiles' as a machine-decidable statement.</p>
+<h3>schematic_export_kicad</h3>
+<pre class="sig"><code>schematic_export_kicad(schematic: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Export a KiCad-format netlist (kicadsexpr) — author in gitcad, lay
+out in pcbnew or anything else that reads KiCad netlists.</p>
 <h3>schematic_import</h3>
 <pre class="sig"><code>schematic_import(path: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Import a KiCad schematic (.kicad_sch) into a gitcad schematic. The
@@ -180,6 +289,16 @@ netlist is derived the way KiCad derives it — geometrically, from
 wire-pin connectivity, junctions, labels and power symbols — and the
 report's wire_end_hit_pct self-checks the symbol transforms. Pure
 Python — no kernel needed.</p>
+<h3>schematic_import_eagle</h3>
+<pre class="sig"><code>schematic_import_eagle(path: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Import an Eagle .sch (XML): parts + explicit netlist, honest report
+(netlist-only — Eagle pin names stand in for pad numbers until device
+mappings are resolved).</p>
+<h3>schematic_pdf</h3>
+<pre class="sig"><code>schematic_pdf(schematic: &#x27;str&#x27;, out: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Plot a drawn schematic (imported or sheet-authored graphics) to a
+vector PDF at `<code>out</code>` — the print/archive projection. The SVG remains
+the review-loop rendering; this is the same drawing on paper.</p>
 <h3>schematic_render</h3>
 <pre class="sig"><code>schematic_render(schematic: &#x27;str&#x27;, path: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Render the schematic DIAGRAM (SVG) — symbols, net lanes, junctions:

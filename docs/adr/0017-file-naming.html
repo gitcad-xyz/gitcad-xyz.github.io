@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>0017. File naming: .gitcad is the product, extensions are roles — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0017</div><h1>0017. File naming: .gitcad is the product, extensions are roles</h1>
+<p>Date: 2026-07-23</p>
+<p>Status: Accepted</p>
+<h2>Context</h2>
+<p>Design files carried `<code>.json</code><code> suffixes (</code><code>enclosure.gitcad.json</code>`,</p>
+<p>`<code>main.schematic.json</code>`), which made a project directory read like a config</p>
+<p>dump, and `<code>.gitcad</code>` named the <i>mechanical feature-tree document</i> — the</p>
+<p>least product-like thing in the tree. User ruling: a directory listing</p>
+<p>should explain itself, and `<code>.gitcad</code>` should mean THE project.</p>
+<h2>Decision</h2>
+<p>Json-free, role-named extensions. Kind detection stays <b>content-based</b></p>
+<p>(the `<code>schema</code>` field) everywhere — extensions scope discovery and tell</p>
+<p>humans what they're looking at; old `<code>*.json</code>` names remain accepted</p>
+<p>forever.</p>
+<table><tr><th>extension</th><th>role</th></tr>
+<tr><td>`<code>name.gitcad</code>`</td><td><b>THE project root</b>: the top-level assembly manifest whose instances are the product's parts — mechanical and electrical alike (an assembly IS a part, ADR-0008; a board-backed part is an instance like any other). One per project.</td></tr>
+<tr><td>`<code>name.part</code>`</td><td>any other part manifest (subassemblies included)</td></tr>
+<tr><td>`<code>name.model</code>`</td><td>a mechanical feature-tree document — how one part gets its shape, never the product. `<code>model_to_part</code><code> emits </code><code>&lt;name&gt;.model</code>`.</td></tr>
+<tr><td>`<code>name.pcba</code>`</td><td>an <b>electrical assembly as a part</b> (body `<code>{kind: pcba, board, schematics}</code><code>) — the Fusion-360 duality: from the outside it is mechanical (envelope, </code><code>mech.bolt</code><code> mounting ports, a 3D body via the bridge); "entering" it is the electrical workflow (</code><code>pcba_verify</code>` = ERC + envelopes + parity + DRC + connectivity over its referenced sources; the viewer opens it into board + schematics views)</td></tr>
+<tr><td>`<code>name.sch</code>`</td><td>schematic (gitcad canonical; `<code>.kicad_sch</code>` stays the import format)</td></tr>
+<tr><td>`<code>name.board</code>`</td><td>board layout</td></tr>
+<tr><td>`<code>requirements.reqs</code>`</td><td>executable requirements (ADR: requirements-as-code)</td></tr>
+<tr><td>`<code>&lt;id&gt;.lot</code>`</td><td>fab-lot provenance record</td></tr>
+</table>
+<p>`<code>gitcad init</code><code> scaffolds this shape and seeds </code><code>&lt;name&gt;.gitcad</code>` as an</p>
+<p>empty product assembly, so the root exists from commit one.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Directory listings are self-describing: one `<code>.gitcad</code>` = the product,</li>
+</ul>
+<p>  everything else names its role.</p>
+<ul>
+<li>- No migration: content detection means every existing `<code>*.json</code>` document</li>
+</ul>
+<p>  keeps working; new tools and generators emit the new names.</p>
+<ul>
+<li>- `<code>.sch</code>` collides with legacy EAGLE/KiCad-4 schematic extensions in the</li>
+</ul>
+<p>  wild; content sniffing resolves it (a non-gitcad `<code>.sch</code>` reports an</p>
+<p>  honest per-file error in discovery, never a crash).</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
