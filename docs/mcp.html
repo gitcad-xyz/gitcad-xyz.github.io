@@ -184,7 +184,7 @@ model ops' <code>config</code> argument. Returns the model text plus each
 configuration's fully resolved parameter table — the design table,
 as data.</p>
 <h3>model_drawing</h3>
-<pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;, details: &#x27;list[dict[str, Any]] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and emit a dimensioned 2D drawing (SVG or PDF by file
 extension) of the final feature — front/top/right/iso, third angle.</p>
 <h3>model_entities</h3>

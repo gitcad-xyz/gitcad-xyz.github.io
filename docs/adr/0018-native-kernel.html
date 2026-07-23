@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0018: gitcad-native B-rep kernel, from scratch, oracle-verified — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0018</div><h1>ADR-0018: gitcad-native B-rep kernel, from scratch, oracle-verified</h1>
+<h2>Status</h2>
+<p>Accepted (2026-07-23, project owner directive: "let's give it a try</p>
+<p>from scratch so we aren't encumbered... we can just test against the</p>
+<p>output of the occt").</p>
+<h2>Context</h2>
+<p>gitcad binds OCCT behind the <code>Kernel</code> seam (ADR-0002). OCCT's ceiling</p>
+<p>on complex surfaces — fragmenting surface–surface intersections,</p>
+<p>tolerance smearing, early NURBS approximation, fragile fillets — is</p>
+<p>the gap between FreeCAD-class and SolidWorks-class geometry</p>
+<p>(docs/research/kernel-from-scratch.md). Forking OCCT would carry that</p>
+<p>architecture; the owner has chosen unencumbered from-scratch, with</p>
+<p>OCCT retained indefinitely as the differential oracle and fallback</p>
+<p>backend behind the seam.</p>
+<h2>Decision</h2>
+<ol>
+<li>1. <b>Three-backend architecture.</b> The seam hosts, simultaneously:</li>
+</ol>
+<ul>
+<li>   - <code>occt</code> — production backend and <i>differential oracle</i>.</li>
+<li>   - <code>ref</code> — the new kernel's **reference implementation in Python</li>
+</ul>
+<p>     with exact rational arithmetic**: slow, correct-by-construction,</p>
+<p>     the executable specification of kernel semantics.</p>
+<ul>
+<li>   - <code>forge</code> — the production port (Rust) of whatever <code>ref</code> has</li>
+</ul>
+<p>     proven, added per operator class. <code>ref</code> is forge's oracle; OCCT</p>
+<p>     is the independent cross-check. Until forge exists, <code>ref</code> itself</p>
+<p>     is promoted for operator classes where its performance suffices.</p>
+<ol>
+<li>2. <b>Correctness discipline.</b> Topological decisions in <code>ref</code> use</li>
+</ol>
+<p>   exact arithmetic (rationals) — no epsilons in classification, ever.</p>
+<p>   Approximation appears only with tracked error bounds. Identity</p>
+<p>   lineage and structured failure are native op results, not wrappers.</p>
+<ol>
+<li>3. <b>Verification is the schedule.</b> A corpus + scorecard harness</li>
+</ol>
+<p>   (kernel-independent, runs today against OCCT alone) defines</p>
+<p>   per-operator-class metrics: build success, volume/area/bbox deltas</p>
+<p>   vs oracle, topology counts, watertightness. An operator class cuts</p>
+<p>   over per ADR-0002 shadow-run only when its scorecard is green over</p>
+<p>   the whole corpus; OCCT remains the fallback for everything else.</p>
+<ol>
+<li>4. <b>Scope ordering</b> (docs/research/kernel-coverage-plan.md holds the</li>
+</ol>
+<p>   full matrix): exact planar solids → quadrics/torus closed-form →</p>
+<p>   NURBS + general SSI → offsets/shell/draft → blends → surfacing</p>
+<p>   suite. Complex surfaces are the end goal; value ships from the</p>
+<p>   planar stage onward.</p>
+<ol>
+<li>5. <b>No format change.</b> Document text, feature ops, and entity-id</li>
+</ol>
+<p>   semantics are unchanged; the kernel swap is invisible above the</p>
+<p>   seam. Auto-generated regression tests that encode OCCT quirks may</p>
+<p>   be quarantined per the constitution; <code>invariants/</code> + <code>golden/</code> stay</p>
+<p>   green throughout.</p>
+<ol>
+<li>6. <b>Repo split.</b> The kernel lives in its own unencumbered repo,</li>
+</ol>
+<p>   <b>github.com/gitcad-xyz/forge</b> (Apache-2.0, distribution</p>
+<p>   <code>forgekernel</code>): <code>src/forgekernel/</code> Python reference, <code>rust/</code> port</p>
+<p>   later; it never depends on gitcad. gitcad hosts the seam shim</p>
+<p>   (<code>gitcad.kernel.ref</code> importing forgekernel), the benchmark corpus/</p>
+<p>   scorecard, and the bench/ trend history — the harness needs gitcad</p>
+<p>   documents, the kernel does not.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- Two kernels to maintain during the (long) transition; the seam</li>
+</ul>
+<p>  contract must stay disciplined — every new op lands in the Protocol,</p>
+<p>  null, occt, and (as it matures) ref.</p>
+<ul>
+<li>- <code>ref</code> doubles as documentation: the readable statement of what every</li>
+</ul>
+<p>  operator MEANS, something OCCT never gave us.</p>
+<ul>
+<li>- The scorecard harness immediately quantifies today's OCCT failures</li>
+</ul>
+<p>  on our own corpus, useful even if forge never ships.</p>
+<ul>
+<li>- License: ref/forge are gitcad-licensed (unencumbered); OCCT remains</li>
+</ul>
+<p>  a clean LGPL-with-exception dependency.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
