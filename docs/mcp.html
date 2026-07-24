@@ -368,4 +368,26 @@ points: {name: [x, y]} rough positions (they pin the solution branch).
 constraints: [[kind, ...args]] with kinds fix(p,x,y), coincident(p,q),
 horizontal(p,q), vertical(p,q), distance(p,q,d), angle(p,q,deg),
 parallel(p,q,r,s), perpendicular(p,q,r,s), equal_length(p,q,r,s).
-profile: optional point order to emit a closed Profile params dict.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
+profile: optional point order to emit a closed Profile params dict.</p>
+<h3>viewer_close</h3>
+<pre class="sig"><code>viewer_close(url: &#x27;str&#x27; = &#x27;&#x27;, path: &#x27;str&#x27; = &#x27;&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Stop a running viewer server by its URL or served path (empty closes
+all). Returns the number of servers stopped.</p>
+<h3>viewer_list</h3>
+<pre class="sig"><code>viewer_list() -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>List the viewer servers running in this session (path, URL, port).</p>
+<h3>viewer_open</h3>
+<pre class="sig"><code>viewer_open(design: &#x27;str&#x27; = &#x27;&#x27;, path: &#x27;str&#x27; = &#x27;&#x27;, review_base: &#x27;str&#x27; = &#x27;&#x27;, port: &#x27;int&#x27; = 0) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Start the local gitcad web viewer for a design and return its URL, to
+open in a browser (or an embedded webview) for interactive 3D, exploded
+views, cross-probing, schematics, and live checks. Pass `<code>design</code><code> text OR
+an existing </code><code>path</code><code>. </code><code>review_base</code>` (a git ref) adds the in-app review
+tab. The server runs in the background for the rest of the session; list or
+stop servers with viewer_list / viewer_close.</p>
+<h3>visualize</h3>
+<pre class="sig"><code>visualize(design: &#x27;str&#x27;, explode: &#x27;float&#x27; = 0.0, three: &#x27;bool&#x27; = False, width: &#x27;int&#x27; = 1400, height: &#x27;int&#x27; = 900) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Render a design document (model, board, schematic, pcba, or assembly
+text) to an inline PNG that displays directly in the chat. 3D kinds render
+an isometric view; `<code>explode</code><code> spreads an assembly along its axes; </code><code>three</code>`
+forces the 3D board view. Rasterization uses a local Chrome/Edge — without
+one this returns an actionable error rather than a silent downgrade.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
