@@ -1,0 +1,185 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0020 — forge is the sole geometry kernel; OCCT is removed — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0020</div><h1>ADR-0020 — forge is the sole geometry kernel; OCCT is removed</h1>
+<p>Status: accepted (2026-07-24)</p>
+<p>Supersedes the OCCT-fallback and the OCCT leg of the three-oracle chain in</p>
+<p><a href="0018-native-kernel.md">ADR-0018</a>. The exactness charter (ADR-0018/0019)</p>
+<p>stands unchanged.</p>
+<h2>Context</h2>
+<p>ADR-0018 introduced forge (the native, exact-arithmetic B-rep kernel) behind</p>
+<p>the <code>Kernel</code> seam and kept OCCT (<code>cadquery-ocp</code>) for two jobs:</p>
+<ol>
+<li>1. <b>A jump-start / fallback</b> — build the operations forge had not yet</li>
+</ol>
+<p>   implemented, so the product worked before the kernel was complete.</p>
+<ol>
+<li>2. <b>An independent oracle</b> — the differential half of the three-oracle chain</li>
+</ol>
+<p>   (<code>ref</code> ⇄ OCCT ⇄ Rust), cross-checking forge's answers against a</p>
+<p>   30-year-hardened kernel.</p>
+<p>Both jobs have largely retired themselves:</p>
+<ul>
+<li>- forge now covers the corpus end to end — planar and quadric solids, NURBS</li>
+</ul>
+<p>  surfaces and complete-branch SSI, offsets, blends, lofts, exact mass</p>
+<p>  properties, tessellation, and native STEP read/write (K1–K7). A default</p>
+<p>  install already runs forge-first (ADR-0018 promotion, wired in <code>get_kernel</code>).</p>
+<ul>
+<li>- The last capability OCCT was load-bearing for in the <i>default</i> path was</li>
+</ul>
+<p>  hidden-line removal (<code>HLRBRep</code>) behind 2D drawings — now replaced by native</p>
+<p>  forge HLR + section curves (<code>forgekernel.hlr</code>).</p>
+<ul>
+<li>- But OCCT was <i>also</i> silently backfilling a tail of operations forge does not</li>
+</ul>
+<p>  yet reach (it was the <code>AutoKernel</code> fallback for source-free ops, and the</p>
+<p>  forced backend for a handful of drawing/import sites). Cutting it converts</p>
+<p>  those from "works via floats" to an honest, stage-named refusal. That</p>
+<p>  capability delta is real and is enumerated below rather than hidden.</p>
+<p>Meanwhile OCCT carries real costs: a large LGPL-2.1 binary wheel (install</p>
+<p>weight and a license obligation), C-level stdout that corrupts the stdio MCP</p>
+<p>stream, and a second geometry representation to convert to and from. Keeping a</p>
+<p>whole kernel for one feature is the wrong trade once forge can do that feature.</p>
+<h2>Decision</h2>
+<p><b>Remove <code>cadquery-ocp</code>. forge becomes the sole geometry kernel.</b></p>
+<ol>
+<li>1. <b>Native forge HLR + section curves.</b> Add hidden-line removal and section</li>
+</ol>
+<p>   curves to forge (<code>forgekernel.hlr</code>): exact straight edges for planar solids</p>
+<p>   (<code>logical_edges</code>), sampled rim circles + silhouette generators for cylinders,</p>
+<p>   and sharp + view-dependent silhouette edges from the tessellation for the</p>
+<p>   rest; occlusion by a hole-respecting inside-classifier (planar parity,</p>
+<p>   drilled = base-parity AND-NOT bores, else tessellation parity). <code>section_polys</code></p>
+<p>   returns the cut-plane ∩ solid-surface curves in the same sheet frame, so a</p>
+<p>   section view's outline overlays its projection exactly. Visibility is a</p>
+<p>   display property, not a topological decision, so — under the exactness charter</p>
+<p>   — it may use floats; the geometry it draws is still the exact solid. The</p>
+<p>   drawing engine consumes projected 2D segments from the kernel seam rather</p>
+<p>   than calling any kernel-specific projector.</p>
+<ol>
+<li>2. <b><code>get_kernel</code> is forge or nothing.</b> The default is <code>RefKernel</code> (forge);</li>
+</ol>
+<p>   the only fallback is <code>NullKernel</code> (structure-only, honest about not checking</p>
+<p>   geometry). <code>OcctKernel</code> and <code>AutoKernel</code> are deleted; <code>require="occt"</code> is</p>
+<p>   removed.</p>
+<ol>
+<li>3. <b>The oracle leg retires.</b> forge-vs-OCCT differential tests are converted</li>
+</ol>
+<p>   to forge-native invariants or deleted. forge's correctness now rests on the</p>
+<p>   three checks it already carries and controls:</p>
+<ul>
+<li>   - exact-ℚ invariants (a decidable answer, not a tolerance) — the real spec;</li>
+<li>   - <code>ref</code> (Python) ⇄ Rust bit-identity — an independent re-implementation;</li>
+<li>   - property fuzzing — volume-identity <code>V(A∪B)+V(A∩B)=V(A)+V(B)</code>, SSI</li>
+</ul>
+<p>     certified-residual, and additivity/partition identities.</p>
+<ol>
+<li>4. <b>STEP is forge-native</b> (already true via <code>forgekernel.stepio</code>); no OCCT in</li>
+</ol>
+<p>   any import/export path.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- <b>Lighter, unencumbered install.</b> <code>pip install gitcad</code> no longer pulls a</li>
+</ul>
+<p>  ~hundreds-of-MB LGPL wheel; the whole stack is Apache-2.0 + the exact kernel.</p>
+<ul>
+<li>- <b>No stdio corruption.</b> With no OCCT, the MCP server has no C-library banner</li>
+</ul>
+<p>  to leak onto the JSON-RPC stream (the redirect stays as defense-in-depth).</p>
+<ul>
+<li>- <b>We lose the independent oracle.</b> This is the real cost: the differential</li>
+</ul>
+<p>  against a foreign kernel is gone. Mitigation is (3) above — invariants, the</p>
+<p>  ref/Rust cross-check, and fuzzing are internal but decidable and do not</p>
+<p>  depend on trusting a float answer. New exact-math still gets an adversarial</p>
+<p>  review pass (the established practice).</p>
+<ul>
+<li>- <b>Drawing quality shifts.</b> Native HLR draws exact straight edges exactly;</li>
+</ul>
+<p>  curved silhouettes and circular edges are polyline-approximated at the</p>
+<p>  tessellation deflection. Good enough for engineering drawings now; an exact</p>
+<p>  per-primitive edge path (clean arcs/ellipses) is a later refinement, not a</p>
+<p>  blocker.</p>
+<ul>
+<li>- <b><code>gitcad[occt]</code> extra is removed.</b> Any lingering OCCT-only feature that</li>
+</ul>
+<p>  cannot be reforged is dropped explicitly (with rationale) rather than kept</p>
+<p>  alive by an optional dependency.</p>
+<h3>Capability delta (what regressed to an honest refusal)</h3>
+<p>These features worked via the OCCT fallback and now raise a stage-named</p>
+<p><code>NotYetImplemented</code> until the forge stage that owns them lands. Each has a</p>
+<p><code>golden</code> contract preserved in-tree behind <code>@pytest.mark.forge_gap</code>, so it</p>
+<p>lights up automatically when forge closes the gap — no coverage is silently</p>
+<p>lost, it is quarantined and named. **The 0.9.x patch line restores these one</p>
+<p>exact, adversarially-reviewed step at a time; the "restored" rows below are</p>
+<p>already back.**</p>
+<table><tr><th>Feature</th><th>Forge stage</th><th>Status</th></tr>
+<tr><td>STL export / 3D view of a <i>drilled</i> solid</td><td>K2.x DrilledSolid tessellation</td><td><b>restored 0.9.1</b></td></tr>
+<tr><td>3D view / STL of bare cylinder / sphere / cone</td><td>K2.x primitive tessellation</td><td><b>restored 0.9.1</b></td></tr>
+<tr><td>circular pattern, tilted / diagonal sketch planes</td><td>K2.2 exact ℚ[√d] rotation</td><td><b>restored 0.9.2</b> (angles that are multiples of 30°/45°)</td></tr>
+<tr><td>chamfer of a <i>selected</i> edge</td><td>K1.2 stable edge-id chamfer</td><td><b>restored 0.9.3</b> (axis-aligned box edges, exact planar wedge)</td></tr>
+<tr><td>counterbore holes (coaxial cyl subtraction)</td><td>K2.0 drilled solids</td><td><b>restored 0.9.3</b> (sequential coaxial cuts)</td></tr>
+<tr><td>countersink holes (cone subtraction)</td><td>K2.2 conical bore cut</td><td>forge_gap</td></tr>
+<tr><td>engrave (text-pocket boolean)</td><td>K3.1 arbitrary-angle strokes (mixed radicals)</td><td>forge_gap</td></tr>
+<tr><td>draft on a quadric face</td><td>K2.2 tilt of a quadric</td><td>forge_gap</td></tr>
+<tr><td>boss + pilot (Solid ⊍ Cyl disjoint union)</td><td>K2.3 mixed disjoint unions</td><td>forge_gap</td></tr>
+<tr><td>curved-solid STEP export + STEP round-trip of a drilled plate</td><td>K3.7 freeform STEP</td><td>forge_gap</td></tr>
+<tr><td>fillet on a non-planar base</td><td>K5.2 general blends</td><td>forge_gap</td></tr>
+<tr><td>interference of face-touching / pocketed solids</td><td>K2.x boolean robustness on degenerate contact</td><td>forge_gap</td></tr>
+</table>
+<p>Deliberately <b>dropped</b> (not merely deferred), with an actionable message:</p>
+<ul>
+<li>- <b>FreeCAD <code>.FCStd</code> import.</b> Its geometry is OCCT-format <code>.brp</code> payloads; forge</li>
+</ul>
+<p>  has no reader for that binary format. <code>model_import</code> and <code>gitcad-convert</code></p>
+<p>  now return the STEP migration path (export STEP from FreeCAD, import that —</p>
+<p>  planar solids come in exactly). Restoring <code>.FCStd</code> would need either a native</p>
+<p>  OCCT-BREP reader or a FreeCAD-tree-only importer; neither is worth it pre-users.</p>
+<p>Non-default features kept working on forge (no regression): model/section/</p>
+<p>assembly 2D drawings, box/prism fillet &amp; chamfer-all-edges, shell, planar STEP</p>
+<p>import, mass properties + centroid, exact inertia (<code>gitcad.analysis</code>), feature</p>
+<p>recognition of plate-with-holes, planar-part interference, the select-DSL</p>
+<p>(<code>area_max</code>/<code>length_max</code>/axis extremes, now that <code>entities()</code> carries</p>
+<p><code>centroid</code>/<code>area</code>/<code>length</code>).</p>
+<h2>Migration (per the CLAUDE.md major-change process)</h2>
+<ol>
+<li>1. This ADR supersedes the relevant part of ADR-0018.</li>
+<li>2. Build forge HLR behind the existing seam; the drawing engine switches to the</li>
+</ol>
+<p>   seam's projected-segment output.</p>
+<ol>
+<li>3. Shadow-check: the new drawings render the corpus; visibility is verified</li>
+</ol>
+<p>   against the tessellation (a point is hidden iff a triangle occludes it).</p>
+<ol>
+<li>4. Convert <code>tests/**</code> <code>@pytest.mark.occt</code> differentials to forge invariants or</li>
+</ol>
+<p>   delete; <code>invariants/</code> + <code>golden/</code> stay green with no kernel-marker.</p>
+<ol>
+<li>5. Delete <code>kernel/occt.py</code>, <code>kernel/auto.py</code>, the <code>occt</code> extra, and the</li>
+</ol>
+<p>   <code>cadquery-ocp</code> dependency. Remove the <code>occt</code> pytest marker.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>

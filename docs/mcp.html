@@ -39,7 +39,7 @@ assembly body, and the post-populate validation.</p>
 <p>EXACT interference check: build each instanced part's real geometry
 (`<code>models</code>`: part id -&gt; model text), place per the assembly transforms,
 boolean-intersect every AABB-overlapping pair. Nonzero common volume =
-collision, measured in mm3. Requires the OCCT kernel.</p>
+collision, measured in mm3.</p>
 <h3>assembly_validate</h3>
 <pre class="sig"><code>assembly_validate(assembly_body: &#x27;dict[str, Any]&#x27;, parts: &#x27;list[str]&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Validate an assembly body (instances + mates) against its parts'
@@ -174,6 +174,21 @@ id assigned to the feature (never an ordinal index).</p>
 chip(size='0603'), soic(n=8, pitch=1.27), qfn(n=16, pitch=0.5, ep=2.1),
 header(n=6, rows=2). Returns the footprint (pads + courtyard) ready for
 a Board component or footprint_to_part registry publishing.</p>
+<h3>get_started</h3>
+<pre class="sig"><code>get_started(cwd: &#x27;str&#x27; = &#x27;.&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>CALL THIS FIRST at the start of a session. Onboards the user: scans the
+working directory for existing gitcad designs and returns the recommended
+next steps — initialize a project if there is none, and open the interactive
+GUI (viewer_open) so the user can see the 3D model, drawings, checks, and
+review tabs. Returns a ready-to-build starter model too.</p>
+<h3>github_report</h3>
+<pre class="sig"><code>github_report(repo: &#x27;str&#x27;, title: &#x27;str&#x27;, body: &#x27;str&#x27;, kind: &#x27;str&#x27; = &#x27;issue&#x27;, labels: &#x27;list[str] | None&#x27; = None, confirm: &#x27;bool&#x27; = False) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>File a GitHub <b>issue</b> (kind='issue') or <b>pull request</b> (kind='pr')
+against `<code>repo</code><code> (</code><code>owner/name</code><code>). CONSENT-GATED by default: without
+</code><code>confirm=true</code><code> it only PREVIEWS what would be filed and files nothing —
+show the preview to the user and re-invoke with </code><code>confirm=true</code><code> ONLY after
+they agree. Uses the </code><code>gh</code>` CLI (must be installed and authenticated); a PR
+also needs a pushed branch.</p>
 <h3>model_configurations</h3>
 <pre class="sig"><code>model_configurations(model: &#x27;str&#x27;, set: &#x27;dict[str, dict[str, Any]] | None&#x27; = None, delete: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Configurations / design tables (SW-map P2): one document IS a
@@ -184,9 +199,12 @@ model ops' <code>config</code> argument. Returns the model text plus each
 configuration's fully resolved parameter table — the design table,
 as data.</p>
 <h3>model_drawing</h3>
-<pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;, details: &#x27;list[dict[str, Any]] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;, details: &#x27;list[dict[str, Any]] | None&#x27; = None, bom: &#x27;bool&#x27; = True) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and emit a dimensioned 2D drawing (SVG or PDF by file
-extension) of the final feature — front/top/right/iso, third angle.</p>
+extension) of the final feature — front/top/right/iso, third angle. By
+default the sheet carries a BOM table (derived from the model's union tree)
+with numbered part balloons on the front view; `<code>bom=False</code>` suppresses it
+(e.g. a one-piece sheet-metal solid).</p>
 <h3>model_entities</h3>
 <pre class="sig"><code>model_entities(model: &#x27;str&#x27;, feature_id: &#x27;str&#x27;, kind: &#x27;str&#x27; = &#x27;edge&#x27;, select: &#x27;str | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Stable entity ids + descriptors for a feature's topology (ADR-0003).
@@ -198,9 +216,9 @@ extension) of the final feature — front/top/right/iso, third angle.</p>
 the mechanical manufacturing deliverable.</p>
 <h3>model_import</h3>
 <pre class="sig"><code>model_import(path: &#x27;str&#x27;, fmt: &#x27;str&#x27; = &#x27;auto&#x27;, assets_dir: &#x27;str&#x27; = &#x27;.&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
-<p>Import existing mechanical work (STEP or FreeCAD .FCStd) into a gitcad
-model. Returns the model text plus an honest report of what was imported,
-approximated, and dropped. Requires the OCCT kernel.</p>
+<p>Import existing mechanical work into a gitcad model. STEP (planar solids)
+imports exactly on the forge kernel. Returns the model text plus an honest
+report of what was imported, approximated, and dropped.</p>
 <h3>model_mass</h3>
 <pre class="sig"><code>model_mass(model: &#x27;str&#x27;, density_g_cm3: &#x27;float&#x27; = 1.0) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Physical mass properties of the model's final body: volume (mm^3),
@@ -369,6 +387,15 @@ constraints: [[kind, ...args]] with kinds fix(p,x,y), coincident(p,q),
 horizontal(p,q), vertical(p,q), distance(p,q,d), angle(p,q,deg),
 parallel(p,q,r,s), perpendicular(p,q,r,s), equal_length(p,q,r,s).
 profile: optional point order to emit a closed Profile params dict.</p>
+<h3>update_apply</h3>
+<pre class="sig"><code>update_apply(confirm: &#x27;bool&#x27; = False) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Update gitcad to the latest PyPI release (`<code>pip install -U gitcad</code><code>).
+CONSENT-GATED: without </code><code>confirm=true</code>` it only reports what it would do.
+Restart the MCP server afterwards for the new version to load.</p>
+<h3>update_check</h3>
+<pre class="sig"><code>update_check() -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Check PyPI for a newer gitcad release. Read-only: returns the installed
+version, the latest on PyPI, and whether an update is available.</p>
 <h3>viewer_close</h3>
 <pre class="sig"><code>viewer_close(url: &#x27;str&#x27; = &#x27;&#x27;, path: &#x27;str&#x27; = &#x27;&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Stop a running viewer server by its URL or served path (empty closes
