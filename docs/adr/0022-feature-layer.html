@@ -1,0 +1,105 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0022 — A feature layer above the kernel, and `Body` as the only public return type — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0022</div><h1>ADR-0022 — A feature layer above the kernel, and <code>Body</code> as the only public return type</h1>
+<p>Status: <b>accepted</b> (design; implementation is #125)</p>
+<p>Date: 2026-07-25</p>
+<p>Supersedes: nothing. Extends ADR-0021 (canonical B-rep).</p>
+<h2>Context</h2>
+<p>ADR-0021 established one canonical <code>Body</code> that every representation converts to,</p>
+<p>so an operation is written once rather than once per representation. That fixed</p>
+<p>the <i>arithmetic</i> duplication. It did not fix the <i>interface</i> duplication, and</p>
+<p>this session produced the evidence for why that still matters.</p>
+<p><code>Kernel</code> operations return whatever representation the implementation happened</p>
+<p>to produce — <code>Solid</code>, <code>Cyl</code>, <code>DrilledSolid</code>, <code>AxisStack</code>, <code>RevolveSolid</code>,</p>
+<p><code>RoundedBox</code>, <code>DisjointUnion</code>, <code>MiteredSweep</code>, <code>SphereOverlap</code>, <code>FilletedBox</code>,</p>
+<p><code>TubeSolid</code>. Eleven types through one seam. Three consequences, all observed:</p>
+<p><b>1. Every downstream operation must re-dispatch.</b> <code>ref.py</code> contains long</p>
+<p><code>isinstance</code> chains — one per op — and each is a place where two branches can</p>
+<p>disagree about the same question. They did. <code>tessellate</code> preferred each</p>
+<p>representation's own mesher over the canonical one; measuring the pair showed</p>
+<p>the canonical path was strictly better on every curved shape, and worse, several</p>
+<p>representations' method does not <i>accept</i> a deflection, so `except TypeError:</p>
+<p>return shape.tessellate()` silently discarded the caller's argument. That is a</p>
+<p>wrong answer to a reasonable question, and it was invisible because the mesh was</p>
+<p>still valid — just not the one asked for.</p>
+<p><b>2. Capability depends on construction history, not on the shape.</b> A plate</p>
+<p>with a hole is a <code>DrilledSolid</code> if you drilled it and something else if you</p>
+<p>built it another way, and the two support different operations. An agent cannot</p>
+<p>predict what will work from the geometry it can see. This is the single largest</p>
+<p>source of "refused" cells that are not real exact-field limits.</p>
+<p><b>3. Representations leak into user code.</b> Callers <code>isinstance</code>-check kernel</p>
+<p>outputs to decide what to do next, which pins the internal taxonomy as public</p>
+<p>API and makes any consolidation a breaking change.</p>
+<h2>Decision</h2>
+<p><b>A. <code>Body</code> is the only type the <code>Kernel</code> seam returns.</b> Every public operation</p>
+<p>returns a <code>Body</code>. The eleven representations become private construction</p>
+<p>strategies — retained, because they are how exactness is achieved cheaply, but</p>
+<p>never surfaced.</p>
+<p><b>B. Representations become a lazily-attached optimisation, not an identity.</b></p>
+<p>A <code>Body</code> may carry a <code>_repr</code> hint naming the special form it came from. Ops may</p>
+<p>consult the hint to take a fast exact path. **The hint may never change the</p>
+<p>answer** — only the cost of computing it. Concretely: if an op produces a</p>
+<p>different result with and without the hint, that is a defect, and the existing</p>
+<p>differential oracle can be pointed at exactly this question by running the</p>
+<p>corpus twice with hints stripped.</p>
+<p><b>C. Features are named, re-playable operations above the kernel.</b> A feature</p>
+<p>records intent (<code>hole(d=6, through=True, at=(15,15))</code>) rather than the boolean</p>
+<p>that implemented it. This is what makes identity durable under ADR-0003: a</p>
+<p>feature has a lineage id, so a downstream reference survives a change in how the</p>
+<p>kernel chose to build it.</p>
+<h2>Consequences</h2>
+<p><b>What gets better.</b> The <code>isinstance</code> chains collapse to one dispatch at</p>
+<p>construction. A capability becomes a property of the shape, not of its history.</p>
+<p>The matrix stops having cells that differ only because two paths reach the same</p>
+<p>solid. Ops are written once, against <code>Body</code>, which is the ADR-0021 bet applied</p>
+<p>to the interface as well as the arithmetic.</p>
+<p><b>What gets worse, honestly.</b> Converting to <code>Body</code> eagerly costs time on shapes</p>
+<p>where the special form was the whole point — <code>Cyl.volume()</code> is a closed form and</p>
+<p><code>B.volume(B.to_body(cyl))</code> is a divergence sum over faces. This is why B keeps</p>
+<p>the hint rather than deleting the representations. The measurement to make</p>
+<p>before implementing: convert the corpus and record the cost, per shape, of</p>
+<p><code>to_body</code>. If any shape's conversion dominates its own operations, the hint path</p>
+<p>is load-bearing rather than an optimisation, and that shape needs its exact</p>
+<p>closed form reachable <i>through</i> <code>Body</code> — not around it.</p>
+<p><b>What this does NOT do.</b> It does not add capability. Every cell the matrix</p>
+<p>refuses today for an exact-field reason still refuses. This is an interface</p>
+<p>consolidation, and claiming otherwise would misread the matrix afterwards.</p>
+<h2>Sequencing — and the precondition</h2>
+<p>Under the constitution's own procedure for an architecture change, this is step</p>
+<p>1 of 6, and steps 3–5 (build behind the seam, shadow-run old vs new against the</p>
+<p>corpus diffing volume and topology hash, then cut over) are the substance.</p>
+<p><b>Precondition, stated so it is not quietly skipped:</b> this refactor touches</p>
+<p>every operation and every caller. It must not be started while confirmed</p>
+<p>correctness defects are open, because a refactor on top of known-broken</p>
+<p>foundations makes it impossible to tell a new defect from a pre-existing one</p>
+<p>when the shadow-run diverges. The order is: burn down the open review findings,</p>
+<p>then do this.</p>
+<h2>Why it is written now rather than after</h2>
+<p>Because the evidence is fresh and specific. <code>tessellate</code>'s discarded deflection</p>
+<p>argument is the exact failure mode this ADR exists to prevent, and it was found</p>
+<p>by measurement this session. Recording the decision while the measurement is at</p>
+<p>hand is worth more than recording it later from memory.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
