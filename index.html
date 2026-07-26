@@ -45,8 +45,7 @@
 </pre>
 <div class="tag">agent-first · headless · git-native CAD — mechanical + electrical, one substrate</div>
 
-<div class="block"><pre>$ pip install gitcad          <span class="c"># headless core</span>
-$ pip install "gitcad[occt]"  <span class="c"># + OCCT b-rep kernel</span></pre></div>
+<div class="block"><pre>$ pip install gitcad          <span class="c"># mech + ecad + MCP server + exact kernel (v0.9.6)</span></pre></div>
 
 <p><a href="/docs/">docs</a> · <a href="https://github.com/gitcad-xyz/gitcad">github.com/gitcad-xyz/gitcad</a> · Apache-2.0</p>
 
@@ -84,20 +83,29 @@ model_drawing(m)          <span class="c"># → dimensioned 2D drawing</span>
 board_export_fab(b)       <span class="c"># → Gerber X2 + Excellon + pick-and-place</span></pre></div>
 
 <h2>architecture</h2>
-<p class="d">Six seams. Everything swappable lives behind one. The kernel is proven
-(OpenCASCADE) — the value is the layers around it.</p>
-<div class="block"><pre>Kernel          b-rep ops, validation, measurement   → OCCT via OCP
+<p class="d">Six seams. Everything swappable lives behind one. The kernel is
+<a href="https://github.com/gitcad-xyz/forge">forge</a> — the project's own
+exact-arithmetic b-rep kernel (the only one; OCCT was removed entirely,
+<a href="/docs/adr/0020-forge-sole-kernel.html">ADR-0020</a>). Geometric and topological
+decisions use exact rationals or certified intervals; an operation the kernel
+cannot do exactly refuses by name instead of approximating.</p>
+<div class="block"><pre>Kernel          b-rep ops, validation, measurement   → forgekernel (+ Rust build)
 IdentityService stable entity IDs (naming fix)       → lineage-hash
 DocumentModel   feature tree ⇄ canonical text        → deterministic JSON
-Renderer        headless tessellation → glTF/images  → in progress
-DrawingEngine   3D → 2D views, dimensions, sheets    → OCCT HLR → SVG/PDF
+Renderer        headless tessellation → viewer/STL   → forge mesher
+DrawingEngine   3D → 2D views, dimensions, sheets    → forge HLR → SVG/PDF
 Storage         git models + content-addressed art.  → git</pre></div>
 
 <h2>status</h2>
 <ul>
-  <li><span class="ok">✓</span> document model, stable identity, OCCT kernel, MCP surface, bug reducer</li>
-  <li><span class="ok">→</span> v0.1: manufacturing outputs end-to-end — STEP, drawings, Gerber/drill/PnP</li>
-  <li><span class="d">·</span> next: cross-domain part standard, component registry with trust tiers, web viewer</li>
+  <li><span class="ok">✓</span> on PyPI at <b>0.9.6</b> — six packages: <code>gitcad</code>,
+      <code>gitcad-core</code>, <code>gitcad-mech</code>, <code>gitcad-ecad</code>,
+      <code>forgekernel</code>, <code>forgekernel_rs</code>; no OCCT anywhere in the dependency tree</li>
+  <li><span class="ok">✓</span> released kernel capability: <b>327/345</b> matrix cells (95%) —
+      every miss is an honest, stage-named refusal; 0 crashes through the seam</li>
+  <li><span class="ok">→</span> on main, unreleased: <b>339/345</b> (98%) — torus surfaces,
+      trimmed quadrics, and wider exact fields (ℚ[√d]) landed; 2 gaps left outside the
+      permanently-inexact cells</li>
 </ul>
 <p class="d">Durable decisions are written as
 <a href="https://github.com/gitcad-xyz/gitcad/tree/main/docs/adr">ADRs</a> before code.
