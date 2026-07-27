@@ -45,7 +45,7 @@
 </pre>
 <div class="tag">agent-first · headless · git-native CAD — mechanical + electrical, one substrate</div>
 
-<div class="block"><pre>$ pip install gitcad          <span class="c"># mech + ecad + MCP server + exact kernel (v0.9.6)</span></pre></div>
+<div class="block"><pre>$ pip install gitcad          <span class="c"># mech + ecad + MCP server + exact kernel (v0.9.8)</span></pre></div>
 
 <p><a href="/docs/">docs</a> · <a href="https://github.com/gitcad-xyz/gitcad">github.com/gitcad-xyz/gitcad</a> · Apache-2.0</p>
 
@@ -98,14 +98,21 @@ Storage         git models + content-addressed art.  → git</pre></div>
 
 <h2>status</h2>
 <ul>
-  <li><span class="ok">✓</span> on PyPI at <b>0.9.6</b> — six packages: <code>gitcad</code>,
+  <li><span class="ok">✓</span> on PyPI at <b>0.9.8</b> — six packages: <code>gitcad</code>,
       <code>gitcad-core</code>, <code>gitcad-mech</code>, <code>gitcad-ecad</code>,
       <code>forgekernel</code>, <code>forgekernel_rs</code>; no OCCT anywhere in the dependency tree</li>
-  <li><span class="ok">✓</span> released kernel capability: <b>327/345</b> matrix cells (95%) —
-      every miss is an honest, stage-named refusal; 0 crashes through the seam</li>
-  <li><span class="ok">→</span> on main, unreleased: <b>339/345</b> (98%) — torus surfaces,
-      trimmed quadrics, and wider exact fields (ℚ[√d]) landed; 2 gaps left outside the
-      permanently-inexact cells</li>
+  <li><span class="ok">✓</span> released kernel capability: <b>340/345</b> matrix cells (99%) —
+      0 gaps; the 5 remaining cells are permanently outside any exact field (each with a
+      transcendence proof) and refuse by name; 0 crashes through the seam</li>
+  <li><span class="ok">✓</span> 0.9.8: booleans over freeform NURBS solids (loft × loft end to
+      end) — the volume is a <em>certified</em> interval, a bracket proven to contain the true
+      value, never a bare float; <code>mass_props</code> labels every answer
+      <code>exact</code> or <code>certified ± e</code>; bracket widths shrink O(2<sup>-depth</sup>),
+      and tangent-contact, operand-corner, and loft × planar-solid cases refuse by name</li>
+  <li><span class="ok">✓</span> 0.9.8 also: direct editing (move/offset/delete face + exact heal,
+      recorded as replayable intent), molding draft with parting lines, taper and composite
+      blends, and STEP import that refuses a lying <code>CLOSED_SHELL</code> with a gap report
+      in mm</li>
 </ul>
 <p class="d">Durable decisions are written as
 <a href="https://github.com/gitcad-xyz/gitcad/tree/main/docs/adr">ADRs</a> before code.
