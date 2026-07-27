@@ -396,6 +396,15 @@ Restart the MCP server afterwards for the new version to load.</p>
 <pre class="sig"><code>update_check() -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Check PyPI for a newer gitcad release. Read-only: returns the installed
 version, the latest on PyPI, and whether an update is available.</p>
+<h3>viewer_ask</h3>
+<pre class="sig"><code>viewer_ask(question: &#x27;str&#x27;, options: &#x27;list[str] | None&#x27; = None, timeout_s: &#x27;float&#x27; = 600.0, path: &#x27;str&#x27; = &#x27;&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Ask the human watching the viewer a question and BLOCK until they
+answer in the page (or the timeout passes). Use it when a design decision
+needs their input — a dimension, a material, which variant to pursue.
+`<code>options</code><code> renders as buttons; without options the page offers free
+text. </code><code>answered: false</code>` means nobody answered: that is a real answer
+("nobody was watching") — take the conservative path and say you did,
+never treat silence as consent.</p>
 <h3>viewer_close</h3>
 <pre class="sig"><code>viewer_close(url: &#x27;str&#x27; = &#x27;&#x27;, path: &#x27;str&#x27; = &#x27;&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Stop a running viewer server by its URL or served path (empty closes
@@ -403,6 +412,15 @@ all). Returns the number of servers stopped.</p>
 <h3>viewer_list</h3>
 <pre class="sig"><code>viewer_list() -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>List the viewer servers running in this session (path, URL, port).</p>
+<h3>viewer_note</h3>
+<pre class="sig"><code>viewer_note(text: &#x27;str&#x27;, instance: &#x27;str&#x27; = &#x27;&#x27;, kind: &#x27;str&#x27; = &#x27;status&#x27;, path: &#x27;str&#x27; = &#x27;&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Narrate one step onto the live rail of the open viewer, so the human
+watching sees the work WHILE it happens. `<code>instance</code><code> names the assembly
+member being worked on — the page highlights it and the camera follows.
+</code><code>kind</code><code>: status (default), done (clears the working highlight), or
+problem (rendered red). Use it around every meaningful edit: say what you
+are about to do, mark done when you finish. Targets the most recently
+opened viewer; </code><code>path</code>` aims at another watched design.</p>
 <h3>viewer_open</h3>
 <pre class="sig"><code>viewer_open(design: &#x27;str&#x27; = &#x27;&#x27;, path: &#x27;str&#x27; = &#x27;&#x27;, review_base: &#x27;str&#x27; = &#x27;&#x27;, port: &#x27;int&#x27; = 0) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Start the local gitcad web viewer for a design and return its URL, to
