@@ -45,7 +45,7 @@
 </pre>
 <div class="tag">agent-first · headless · git-native CAD — mechanical + electrical, one substrate</div>
 
-<div class="block"><pre>$ pip install gitcad          <span class="c"># mech + ecad + MCP server + exact kernel (v0.9.8)</span></pre></div>
+<div class="block"><pre>$ pip install gitcad          <span class="c"># mech + ecad + MCP server + exact kernel (v0.9.9)</span></pre></div>
 
 <p><a href="/docs/">docs</a> · <a href="https://github.com/gitcad-xyz/gitcad">github.com/gitcad-xyz/gitcad</a> · Apache-2.0</p>
 
@@ -79,8 +79,10 @@ model_validate(m)   <span class="c"># watertight? self-intersecting? → structu
 model_measure(m)    <span class="c"># volume, centroid → deterministic oracle</span>
 
 model_export(m, <span class="ok">"step"</span>)   <span class="c"># → part.step</span>
-model_drawing(m)          <span class="c"># → dimensioned 2D drawing</span>
-board_export_fab(b)       <span class="c"># → Gerber X2 + Excellon + pick-and-place</span></pre></div>
+model_drawing(m)          <span class="c"># → dimensioned drawing on an ISO/ANSI sheet</span>
+board_export_fab(b)       <span class="c"># → Gerber X2 + Excellon + pick-and-place</span>
+
+viewer_open(path=<span class="ok">"."</span>)      <span class="c"># one detached server per project; outlives the session</span></pre></div>
 
 <h2>architecture</h2>
 <p class="d">Six seams. Everything swappable lives behind one. The kernel is
@@ -98,22 +100,37 @@ Storage         git models + content-addressed art.  → git</pre></div>
 
 <h2>status</h2>
 <ul>
-  <li><span class="ok">✓</span> on PyPI at <b>0.9.8</b> — six packages: <code>gitcad</code>,
+  <li><span class="ok">✓</span> on PyPI at <b>0.9.9</b> — six packages: <code>gitcad</code>,
       <code>gitcad-core</code>, <code>gitcad-mech</code>, <code>gitcad-ecad</code>,
       <code>forgekernel</code>, <code>forgekernel_rs</code>; no OCCT anywhere in the dependency tree</li>
   <li><span class="ok">✓</span> released kernel capability: <b>340/345</b> matrix cells (99%) —
       0 gaps; the 5 remaining cells are permanently outside any exact field (each with a
       transcendence proof) and refuse by name; 0 crashes through the seam</li>
-  <li><span class="ok">✓</span> 0.9.8: booleans over freeform NURBS solids (loft × loft end to
-      end) — the volume is a <em>certified</em> interval, a bracket proven to contain the true
-      value, never a bare float; <code>mass_props</code> labels every answer
-      <code>exact</code> or <code>certified ± e</code>; bracket widths shrink O(2<sup>-depth</sup>),
-      and tangent-contact, operand-corner, and loft × planar-solid cases refuse by name</li>
-  <li><span class="ok">✓</span> 0.9.8 also: direct editing (move/offset/delete face + exact heal,
-      recorded as replayable intent), molding draft with parting lines, taper and composite
-      blends, and STEP import that refuses a lying <code>CLOSED_SHELL</code> with a gap report
-      in mm</li>
+  <li><span class="ok">✓</span> 0.9.9 is <b>the field release</b> — driven by the first real bug
+      reports, and named for them. The viewer is now ONE detached server per project: it outlives
+      the agent session (kill the agent; the page keeps serving and live-reloading), opens the
+      browser, always states its URL, and stops only on an explicit <code>viewer_stop</code>.
+      The top assembly is the default view and parts are in-page sub-views
+      (<code>#part=</code> deep links) — never a second server, never a port per part</li>
+  <li><span class="ok">✓</span> 0.9.9: imports that cannot lie — freeform STEP closure is a
+      polynomial identity in ℚ, never sampled, so a shell that does not close refuses with its
+      gap in millimetres, down to a 1e-9 crack; heal can repair vertex tears and provably cannot
+      paper over a surface crack</li>
+  <li><span class="ok">✓</span> 0.9.9: every drawing renders on a standard sheet — ISO 5457
+      A4–A0 and ANSI Y14.1 A–E frames with centring marks and grid references, ISO 7200 title
+      block, standard scale series, correct projection symbol; author, date and revision derive
+      from the part file's git history, and stay blank rather than invented outside a repo</li>
+  <li><span class="ok">✓</span> the freeform core, from 0.9.8: booleans over NURBS solids
+      (loft × loft end to end) — the volume is a <em>certified</em> interval, a bracket proven to
+      contain the true value, never a bare float; <code>mass_props</code> labels every answer
+      <code>exact</code> or <code>certified ± e</code>. Alongside it: direct editing
+      (move/offset/delete face + exact heal, recorded as replayable intent), molding draft with
+      parting lines, and taper and composite blends</li>
 </ul>
+<p class="d">Fixes the field found, in 0.9.9: a union of coplanar-wall lofts crashed raw on
+0.9.8 and now refuses by name; <code>patch_flux</code> was silently wrong on B-spline surfaces
+with interior knots; the planar STEP importer silently chorded curved edges and now refuses; the
+STEP tokenizer no longer loses entities containing quoted semicolons.</p>
 <p class="d">Durable decisions are written as
 <a href="https://github.com/gitcad-xyz/gitcad/tree/main/docs/adr">ADRs</a> before code.
 The rules agents must follow: <a href="https://github.com/gitcad-xyz/gitcad/blob/main/CLAUDE.md">CLAUDE.md</a>.</p>
