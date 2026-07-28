@@ -486,8 +486,11 @@ session by its URL. Returns how many were stopped; viewer_open afterwards
 starts fresh.</p>
 <h3>visualize</h3>
 <pre class="sig"><code>visualize(design: &#x27;str&#x27;, explode: &#x27;float&#x27; = 0.0, three: &#x27;bool&#x27; = False, width: &#x27;int&#x27; = 1400, height: &#x27;int&#x27; = 900) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
-<p>Render a design document (model, board, schematic, pcba, or assembly
-text) to an inline PNG that displays directly in the chat. 3D kinds render
-an isometric view; `<code>explode</code><code> spreads an assembly along its axes; </code><code>three</code>`
-forces the 3D board view. Rasterization uses a local Chrome/Edge — without
-one this returns an actionable error rather than a silent downgrade.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
+<p>Render a design document to an inline PNG that displays directly in the
+chat. `<code>design</code><code> is document text (model, board, schematic, pcba) or the
+PATH of a design file — an ASSEMBLY must be given as a path, because it
+resolves its instances from the </code><code>.part</code><code> files sitting next to it. 3D
+kinds render an isometric view; </code><code>explode</code><code> spreads an assembly along its
+axes; </code><code>three</code>` forces the 3D board view. Rasterization uses a local
+Chrome/Edge — without one this returns an actionable error rather than a
+silent downgrade.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
