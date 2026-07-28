@@ -165,9 +165,21 @@ validation, DRC), and before/after SVG renders. gate_ok fails on any
 INTRODUCED violation; pre-existing reds don't block (not this PR's
 fault). The markdown field is ready to post as a PR comment.</p>
 <h3>feature_add</h3>
-<pre class="sig"><code>feature_add(model: &#x27;str&#x27;, op: &#x27;str&#x27;, params: &#x27;dict[str, Any] | None&#x27; = None, inputs: &#x27;list[str] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
-<p>Append an intent-level feature. Returns the new model text and the stable
-id assigned to the feature (never an ordinal index).</p>
+<pre class="sig"><code>feature_add(model: &#x27;str&#x27;, op: &#x27;str&#x27;, params: &#x27;dict[str, Any] | None&#x27; = None, inputs: &#x27;list[str] | None&#x27; = None, validate: &#x27;bool&#x27; = True) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Append an intent-level feature and (by default) BUILD the tree it just
+extended: a feature the kernel will refuse is refused HERE, with the
+kernel's structured reason — never a success now and a refusal three
+tools later (#12). A refused feature is NOT added; the returned model is
+unchanged. `<code>validate=false</code><code> skips the build (batching many adds on a
+slow model); the deferred truth then arrives at the next
+model_measure/model_validate/model_export.
+
+</code><code>model</code>` is document text, or the PATH of a file-backed model
+(model_new(path=...)): file-backed models are PERSISTED on every
+successful add — the project viewer live-reloads, so the user watches
+each feature land (#7) — and the result carries the viewer URL (#6).
+Returns the new model text and the stable feature id (never an ordinal
+index).</p>
 <h3>footprint_generate</h3>
 <pre class="sig"><code>footprint_generate(kind: &#x27;str&#x27;, params: &#x27;dict | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Parametric footprint generators (KiCad-map P5) — wizards, agent-first:
@@ -195,9 +207,10 @@ also needs a pushed branch.</p>
 product family. Each configuration is a named override set of
 existing parameters ('M3x10': {'L': 10}); the whole table re-resolves
 per variant so dependent expressions follow. Build any variant with
-model ops' <code>config</code> argument. Returns the model text plus each
-configuration's fully resolved parameter table — the design table,
-as data.</p>
+model ops' <code>config</code> argument. `<code>model</code>` is document text or a
+file-backed model's path (persisted on update). Returns the model text
+plus each configuration's fully resolved parameter table — the design
+table, as data.</p>
 <h3>model_drawing</h3>
 <pre class="sig"><code>model_drawing(model: &#x27;str&#x27;, path: &#x27;str&#x27;, title: &#x27;str&#x27; = &#x27;part&#x27;, sheet: &#x27;str&#x27; = &#x27;A3&#x27;, details: &#x27;list[dict[str, Any]] | None&#x27; = None, bom: &#x27;bool&#x27; = True, settings: &#x27;dict[str, Any] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and emit a dimensioned 2D drawing (SVG or PDF by file
@@ -210,17 +223,20 @@ with numbered part balloons on the front view; `<code>bom=False</code><code> sup
 ("ANSI A".."ANSI E"), or "auto"/"auto:ansi" to pick from the series.
 </code><code>settings</code><code> overrides title-block fields (owner, drawing_number,
 revision, date, author, approved_by, units, sheet_no, sheet_count) and
-may carry </code><code>source_path</code>` to derive author/date/revision from the git
-log of the part file — absent data renders blank, never invented.</p>
+may carry </code><code>source_path</code><code> to derive author/date/revision from the git
+log of the part file — absent data renders blank, never invented.
+</code><code>model</code>` is document text or a file-backed model's path.</p>
 <h3>model_entities</h3>
 <pre class="sig"><code>model_entities(model: &#x27;str&#x27;, feature_id: &#x27;str&#x27;, kind: &#x27;str&#x27; = &#x27;edge&#x27;, select: &#x27;str | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Stable entity ids + descriptors for a feature's topology (ADR-0003).
-`<code>select</code>` filters with the query DSL (e.g. "plane,zmax" = the back face;
-"cylinder"; "line,zmin") instead of manual centroid filtering.</p>
+`<code>select</code><code> filters with the query DSL (e.g. "plane,zmax" = the back face;
+"cylinder"; "line,zmin") instead of manual centroid filtering. </code><code>model</code>`
+is document text or a file-backed model's path.</p>
 <h3>model_export</h3>
 <pre class="sig"><code>model_export(model: &#x27;str&#x27;, path: &#x27;str&#x27;, fmt: &#x27;str&#x27; = &#x27;step&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build the model and export the final feature's shape to STEP or STL —
-the mechanical manufacturing deliverable.</p>
+the mechanical manufacturing deliverable. `<code>model</code>` is document text or
+a file-backed model's path.</p>
 <h3>model_import</h3>
 <pre class="sig"><code>model_import(path: &#x27;str&#x27;, fmt: &#x27;str&#x27; = &#x27;auto&#x27;, assets_dir: &#x27;str&#x27; = &#x27;.&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Import existing mechanical work into a gitcad model. STEP (planar solids)
@@ -231,14 +247,24 @@ report of what was imported, approximated, and dropped.</p>
 <p>Physical mass properties of the model's final body: volume (mm^3),
 mass (g) at the given density (g/cm^3), center of mass, and the
 unit-density inertia tensor about the COM. The engineering numbers a
-drawing title block or a motion study starts from.</p>
+drawing title block or a motion study starts from. `<code>model</code>` is document
+text or a file-backed model's path.</p>
 <h3>model_measure</h3>
 <pre class="sig"><code>model_measure(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build against the best available kernel and return mass properties per
-feature — the deterministic oracle an agent verifies against.</p>
+feature — the deterministic oracle an agent verifies against. `<code>model</code>`
+is document text or a file-backed model's path.</p>
 <h3>model_new</h3>
-<pre class="sig"><code>model_new() -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
-<p>Create an empty model; returns its canonical text form.</p>
+<pre class="sig"><code>model_new(path: &#x27;str&#x27; = &#x27;&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
+<p>Create an empty model. RECOMMENDED: pass `<code>path</code><code> (e.g. 'body.model')
+so the document is created ON DISK in the project — text is source
+(ADR-0004), and a document that lives only in this conversation is
+invisible to the user, undiffable, and lost if the session dies (#7).
+File-backed models auto-start the project viewer and return its URL
+(#6; opt out with GITCAD_NO_BROWSER=1), and every later
+</code><code>feature_add(model='&lt;path&gt;', ...)</code><code> persists, so the user WATCHES
+features land. Without </code><code>path</code>` the model exists only in the returned
+string (scratch work).</p>
 <h3>model_parameters</h3>
 <pre class="sig"><code>model_parameters(model: &#x27;str&#x27;, set: &#x27;dict[str, Any] | None&#x27; = None) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Named parameters + equations (SW-map P1): read or update the model's
@@ -246,8 +272,9 @@ parameter table. Values are numbers or '=expr' strings ('=W/2 + wall';
 trig in degrees, pi available). Feature params reference them the same
 way — a part becomes a function of its parameters. Re-valuing a
 parameter changes geometry (an ADR-0006 breaking change, gated like
-any other) but never re-identifies features. Returns the model text
-and the fully resolved table.</p>
+any other) but never re-identifies features. `<code>model</code>` is document
+text or a file-backed model's path (persisted on update). Returns the
+model text and the fully resolved table.</p>
 <h3>model_recognize</h3>
 <pre class="sig"><code>model_recognize(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Convert dead imported geometry back into a parameterized model — WITH
@@ -257,8 +284,9 @@ editable dimensions. Unrecognizable shapes are reported honestly.</p>
 <h3>model_validate</h3>
 <pre class="sig"><code>model_validate(model: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Build and run geometric validity checks per feature (watertight,
-self-intersection, ...). `<code>geometry_verified: false</code>` means only the null
-backend was available — structure was checked, geometry was NOT.</p>
+self-intersection, ...). `<code>geometry_verified: false</code><code> means only the null
+backend was available — structure was checked, geometry was NOT.
+</code><code>model</code>` is document text or a file-backed model's path.</p>
 <h3>part_check_release</h3>
 <pre class="sig"><code>part_check_release(old_part: &#x27;str&#x27;, new_part: &#x27;str&#x27;) -&gt; &#x27;dict[str, Any]&#x27;</code></pre>
 <p>Interface-semver release gate (ADR-0009): given old and new part.json
