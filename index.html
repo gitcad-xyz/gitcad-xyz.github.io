@@ -49,6 +49,27 @@
 
 <p><a href="/docs/">docs</a> · <a href="https://github.com/gitcad-xyz/gitcad">github.com/gitcad-xyz/gitcad</a> · Apache-2.0</p>
 
+<h2>start</h2>
+<p>There is no application to open. gitcad is an <b>MCP server</b> — you wire it into the agent
+you already use, once, and from then on you design by asking. Installing the package is only
+half of it; the agent has to be told the server exists.</p>
+<div class="block"><pre>$ pip install gitcad
+$ claude mcp add gitcad -- gitcad-mcp     <span class="c"># Claude Code</span></pre></div>
+<p class="d">Any other MCP client (Claude Desktop, Cursor, Zed, Codex) takes the same server in
+its own config file:</p>
+<div class="block"><pre>{ <span class="ok">"mcpServers"</span>: { <span class="ok">"gitcad"</span>: { <span class="ok">"command"</span>: <span class="ok">"gitcad-mcp"</span> } } }</pre></div>
+<p>Then say what you want built. The agent's first call is <code>get_started</code>, which
+scans the working directory and hands back what is already there and what to do next — so a
+cold session knows where it is without being told:</p>
+<div class="block"><pre>you   <span class="ok">"design a 72 mm floating crankbait — no electronics"</span>
+
+      <span class="c">get_started    what's in this directory, what to do next</span>
+      <span class="c">model_new      a project is a repo; the model is text</span>
+      <span class="c">viewer_open    ONE URL, opens your browser, outlives the session</span>
+      <span class="c">feature_add    build → model_validate → model_measure → export</span></pre></div>
+<p class="d">67 tools, mechanical and electrical. The agent is expected to open the viewer
+early and leave it up, so you watch the design take shape rather than waiting for a report.</p>
+
 <h2>what</h2>
 <p>A CAD platform where the primary interface is an <a href="https://modelcontextprotocol.io">MCP</a>
 tool surface, not a GUI. Models are canonical <b>text</b> — geometry (STEP, Gerbers, PDFs)
