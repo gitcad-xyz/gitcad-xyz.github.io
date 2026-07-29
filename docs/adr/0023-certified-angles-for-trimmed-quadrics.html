@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0023 — certified angles for trimmed quadric faces — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0023</div><h1>ADR-0023 — certified angles for trimmed quadric faces</h1>
+<p>Status: proposed (2026-07-29)</p>
+<p>Extends <a href="0019-certified-intervals.md">ADR-0019</a> (certified intervals) and</p>
+<p><a href="0021-canonical-brep.md">ADR-0021</a> (one canonical B-rep). Supersedes nothing:</p>
+<p>the exactness charter is unchanged, and this is an application of the escape</p>
+<p>hatch ADR-0019 already built rather than a loosening of it.</p>
+<h2>Context</h2>
+<h3>The measurement</h3>
+<p>The capability matrix scores a <b>cell</b> green when one representative solid</p>
+<p>meets one representative operation. It has never asked what fraction of the</p>
+<p><b>parameter space</b> behind that cell answers. <code>gitcad.bench.coverage</code> now does:</p>
+<table><tr><th>family</th><th>parameter coverage</th></tr>
+<tr><td>face off a box (planar control)</td><td>77/77 — <b>100%</b></td></tr>
+<tr><td>cap on a sphere (K2.x rung 2)</td><td>33/33 — <b>100%</b></td></tr>
+<tr><td>drill a plate, bore fully inside</td><td>41/41 — <b>100%</b></td></tr>
+<tr><td>pocket into a bar</td><td>39/39 — <b>100%</b></td></tr>
+<tr><td>flat on a bar (K2.x rung 1)</td><td>3/33 — <b>9%</b></td></tr>
+<tr><td>slot through a bar — <i>the composed grid's own <code>cut box</code> shape</i></td><td>0/25 — <b>0%</b></td></tr>
+<tr><td>bore across a plate wall (the 17-cell family)</td><td>8/33, all 8 non-crossing; the crossing set is <b>0%</b></td></tr>
+</table>
+<p><b>The discriminator is whether the cut leaves a circular SEGMENT.</b> Not which</p>
+<p>quadric is involved, and not which curve the two surfaces meet in. A full disc</p>
+<p>removed, a polygon pocket, and a plane cutting a sphere all have polynomial</p>
+<p>closed forms and answer everywhere. A chord across a disc leaves</p>
+<p>    A = r²(t − sin t cos t),   t = arccos(h/r)</p>
+<p>and by Niven <code>t</code> is a rational multiple of π only at twelfths. The admissible</p>
+<p>set is finite inside a continuum. K2.x rung 1 is a green cell on the matrix and</p>
+<p>answers a machinist at <b>three depths</b> on a Ø10 bar.</p>
+<h3>Why this is a decision and not a bug</h3>
+<p>Every remaining boolean family in the composed grid is segment-producing.</p>
+<p>Continuing to build exact rungs therefore closes cells on the matrix while</p>
+<p>shipping capabilities that refuse on essentially every real input — and the</p>
+<p>matrix, counting cells, would report progress the whole way. Two earlier</p>
+<p>roadmap plans were already killed by measuring the denominator</p>
+<p>(<code>docs/kernel-improvement-backlog.md</code> §2); this is the third and the most</p>
+<p>expensive to have got wrong, because the work would have <i>looked</i> like it was</p>
+<p>succeeding.</p>
+<h3>What is actually in the way</h3>
+<p><code>body._band_sweep</code> returns a swept angle <b>in quarter turns</b> — an integer</p>
+<p>index — and <code>_quarter_antiderivative</code> is indexed the same way. Trimmed</p>
+<p>cylindrical, conical and spherical faces are measured by <i>counting sectors</i>,</p>
+<p>not by carrying an angle. That representation is what pins every arc to</p>
+<p>twelfths, and <code>notch.py</code> already records the consequence: a face whose angular</p>
+<p>span is not a whole number of sectors "would need a new quadric measure that</p>
+<p>500+ existing faces also depend on."</p>
+<p>So this is not a routing job inside one rung. It is a change to how a trimmed</p>
+<p>quadric face states its extent.</p>
+<h3>Where the scope was originally set too narrow</h3>
+<p>ADR-0019 introduced certified intervals as a <b>K3</b> need: "K1 and K2 hold to a</p>
+<p>hard rule … K3 breaks that comfort." That rule is still literally true — K2</p>
+<p>uses no floats, it <i>refuses</i> — but it framed exactness as settled for K2, and</p>
+<p>the coverage sweep says otherwise. K2's failure mode is not the one ADR-0019</p>
+<p>anticipated. It is not "the quantity cannot be represented at all"; it is</p>
+<p><b>"the quantity can be represented only on a null set"</b>, which reads as</p>
+<p>success on a cell-counting instrument and as refusal to every user.</p>
+<p>ADR-0019 needs no revision for this. Its governing consequence —</p>
+<blockquote>The exact fields remain the default and the first choice; <code>CInterval</code> is used</blockquote>
+<blockquote>only where no exact field reaches. A model that <i>could</i> be exact must not</blockquote>
+<blockquote>silently fall back to an interval.</blockquote>
+<p>— is exactly the constraint this ADR must honour, and is why the exact sector</p>
+<p>path stays primary and bit-identity is the acceptance criterion below. What</p>
+<p>changes is only the <i>reach</i> of the escape hatch, from K3 to K2.</p>
+<h2>Decision</h2>
+<p>**Carry the angular extent of a trimmed quadric face as a certified angle (an</p>
+<p>ADR-0019 <code>CInterval</code>) rather than an integer sector index, and let the exact</p>
+<p>sector path remain as the fast, exact special case it already is.**</p>
+<ol>
+<li>1. A trim carries <code>(k0, span)</code> <b>or</b> a certified <code>[θ0, θ1]</code>. Where the</li>
+</ol>
+<p>   endpoints land on twelfths the exact path is taken and the result is</p>
+<p>   <code>provenance: "exact"</code>, bit-identical to today.</p>
+<ol>
+<li>2. Where they do not, the face is trimmed at exact surd endpoints — the chord</li>
+</ol>
+<p>   meets the circle at <code>(h, ±√(r²−h²))</code>, which is already representable in</p>
+<p>   ℚ[√d] for any rational <code>h</code> — and the <i>measure</i> is certified.</p>
+<ol>
+<li>3. <code>mass_props</code> reports <code>provenance: "certified"</code> with a proven half-width, as</li>
+</ol>
+<p>   it already does for <code>TubeSolid</code> and <code>TrimmedShell</code>. A certified result is</p>
+<p>   never silently mixed with an exact one.</p>
+<ol>
+<li>4. Topological decisions continue to require a <b>certified sign</b> (ADR-0019).</li>
+</ol>
+<p>   Where a bracket straddles zero the kernel tightens and retries, and refuses</p>
+<p>   if it cannot certify within budget. It never guesses.</p>
+<p>The missing primitive is already built: forge <code>f61e2aa</code> adds certified</p>
+<p><code>arccos</code>, <code>sin</code> and <code>cos</code>, with the enclosure verified against identities</p>
+<p>rather than against a double (the brackets are ~1e-40 wide; a <code>float</code> oracle</p>
+<p>carries ~1e-16 of error and cannot witness them).</p>
+<h3>This is not a move to floating point</h3>
+<p>A bare float carries no proof — you cannot tell a correct 534.6435 from a</p>
+<p>rounding artifact, which is the argument ADR-0019 already made and this ADR</p>
+<p>does not reopen. Moving to tolerance-based arithmetic would be a different</p>
+<p>decision, would supersede ADR-0018/0019, and would give up the property that</p>
+<p>distinguishes this kernel: an agent can act on "certified ± ε" and on a</p>
+<p>refusal, and cannot act on a silent wrong number.</p>
+<h2>Consequences</h2>
+<h3>The permanent exact-field boundary is not permanent</h3>
+<p><code>capability._EXACT_FIELD_BOUNDARY</code> marks 4 single-op and 10 composed cells as</p>
+<p><b>outside any exact field, permanently</b> — a square prism through a sphere</p>
+<p>(arcsin), through a cone (<code>ln(1+√2)</code>, by Baker), a fillet's turn angle</p>
+<p>(arctan, by Lindemann), a loft's sweep (<code>arccos(1/√37)</code>, by</p>
+<p>Gelfond–Schneider). Every one of those constants is <i>transcendental</i> and every</p>
+<p>one is <i>bracketable</i>. Under this ADR they stop being permanent walls and become</p>
+<p><b>certified answers</b> — 14 cells that the roadmap currently excludes from its</p>
+<p>own denominator.</p>
+<p>That is a second correction to the same dict, which already carries one: the</p>
+<p><code>(chamfered box, chamfer(all))</code> entry was labelled permanent and was merely a</p>
+<p>field limitation. A "permanent" label has now hidden closable work twice.</p>
+<h3>ADR-0021's data model has to be restated with it</h3>
+<p>ADR-0021 records the canonical B-rep as</p>
+<p>    Surface ∈ {Plane, Cylinder, Cone, Sphere}</p>
+<p>    Curve   ∈ {Line, Circle}</p>
+<p>and that has already drifted from <code>forgekernel.body</code>, which carries <b>five</b></p>
+<p>surfaces — <code>Torus</code> is missing from the ADR entirely — and, more to the point</p>
+<p>here, carries <b>trims on the surface</b>: <code>SphereS.pole</code> and <code>Torus.(k0, span)</code>.</p>
+<p>Neither trim appears in ADR-0021's model, and the sector index this ADR</p>
+<p>replaces is precisely that unmodelled mechanism. So the change below is not</p>
+<p>additive to ADR-0021's schema; it edits a part of the B-rep that ADR-0021</p>
+<p>describes incompletely. Whichever ADR carries this decision to <i>accepted</i> must</p>
+<p>restate the model, listing the surface set and how a face states its extent.</p>
+<h3>Breaking</h3>
+<p>Geometry output changes for every segment-bearing cut, so by CLAUDE.md rule 3</p>
+<p>this is a <b>breaking change, never auto-merged</b>, and by ADR-0006 it is</p>
+<p>Tier 1 at best. It follows the major-change process in CLAUDE.md:</p>
+<ol>
+<li>1. this ADR;</li>
+<li>2. drop the agent loop to Tier 0;</li>
+<li>3. build the certified trim behind the existing seam, exact path untouched;</li>
+<li>4. shadow-run old vs new across the model corpus — every currently-exact</li>
+</ol>
+<p>   result must stay <b>bit-identical</b>, which is the acceptance criterion, not</p>
+<p>   a nice-to-have;</p>
+<ol>
+<li>5. <code>tests/invariants/</code> and <code>tests/golden/</code> stay green throughout;</li>
+<li>6. cut over.</li>
+</ol>
+<h3>Costs, stated plainly</h3>
+<ul>
+<li>- Certified arithmetic is slower: exact rational bisection to 1e-40 is</li>
+</ul>
+<p>  thousands of operations where an index lookup was one. The exact path</p>
+<p>  staying primary is what keeps this off the common case.</p>
+<ul>
+<li>- <code>provenance</code> becomes load-bearing for consumers. Anything that compares two</li>
+</ul>
+<p>  <code>mass_props</code> volumes for equality must handle brackets, and a certified</p>
+<p>  value must never be written into a byte-canonical document as though exact</p>
+<p>  (ADR-0004).</p>
+<ul>
+<li>- Two number kinds in one measure path is a real complexity increase, and the</li>
+</ul>
+<p>  sector index cannot simply be deleted — it is what makes the 100% families</p>
+<p>  exact and fast.</p>
+<h3>What it buys</h3>
+<p>The segment-bearing families move from single-digit parameter coverage to</p>
+<p>total coverage, and the composed grid's remaining boolean gaps stop being a</p>
+<p>list of rungs that cannot be finished. <code>gitcad.bench.coverage</code> is the</p>
+<p>acceptance instrument: the number to move is the percentage, not the cell.</p>
+<h2>Alternatives considered</h2>
+<p><b>Keep building exact rungs.</b> Rejected by measurement: the next three</p>
+<p>candidate rungs are at 0%, 0% and 9%.</p>
+<p><b>Bare floats with tolerances</b>, as OCCT and Parasolid use. Rejected — it</p>
+<p>supersedes the charter rather than extending it, and it removes the one</p>
+<p>property this kernel has that they do not. If it is ever wanted it should be</p>
+<p>argued on its own merits in its own ADR, not arrived at by drift.</p>
+<p><b>Facet the curved faces and measure the mesh.</b> Rejected; ADR-0019 forbids it</p>
+<p>and it converts an exactness problem into an unbounded-error problem.</p>
+<p><b>Leave the rungs refusing and route users to the certified K7 path.</b> Rejected</p>
+<p>as a non-answer: K7's <code>PatchSolid</code> reaches these shapes only through a</p>
+<p>freeform conversion that does not exist for <code>Cyl</code>, and a D-shaft should not</p>
+<p>require a NURBS detour.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
