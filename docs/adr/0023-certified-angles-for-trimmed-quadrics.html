@@ -25,11 +25,14 @@
   hr{border:0;border-top:1px solid var(--line);margin:32px 0}
   footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
 </style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0023</div><h1>ADR-0023 — certified angles for trimmed quadric faces</h1>
-<p>Status: proposed (2026-07-29)</p>
+<p>Status: accepted (2026-07-29)</p>
 <p>Extends <a href="0019-certified-intervals.md">ADR-0019</a> (certified intervals) and</p>
 <p><a href="0021-canonical-brep.md">ADR-0021</a> (one canonical B-rep). Supersedes nothing:</p>
 <p>the exactness charter is unchanged, and this is an application of the escape</p>
 <p>hatch ADR-0019 already built rather than a loosening of it.</p>
+<p><b>Restates</b> ADR-0021's surface/trim schema, which had drifted from the code</p>
+<p>(see <i>ADR-0021's data model</i> below). ADR-0021's decision — one canonical B-rep,</p>
+<p>representations as constructors — is untouched.</p>
 <h2>Context</h2>
 <h3>The measurement</h3>
 <p>The capability matrix scores a <b>cell</b> green when one representative solid</p>
@@ -134,18 +137,34 @@
 <p>That is a second correction to the same dict, which already carries one: the</p>
 <p><code>(chamfered box, chamfer(all))</code> entry was labelled permanent and was merely a</p>
 <p>field limitation. A "permanent" label has now hidden closable work twice.</p>
-<h3>ADR-0021's data model has to be restated with it</h3>
-<p>ADR-0021 records the canonical B-rep as</p>
-<p>    Surface ∈ {Plane, Cylinder, Cone, Sphere}</p>
-<p>    Curve   ∈ {Line, Circle}</p>
-<p>and that has already drifted from <code>forgekernel.body</code>, which carries <b>five</b></p>
-<p>surfaces — <code>Torus</code> is missing from the ADR entirely — and, more to the point</p>
-<p>here, carries <b>trims on the surface</b>: <code>SphereS.pole</code> and <code>Torus.(k0, span)</code>.</p>
-<p>Neither trim appears in ADR-0021's model, and the sector index this ADR</p>
-<p>replaces is precisely that unmodelled mechanism. So the change below is not</p>
-<p>additive to ADR-0021's schema; it edits a part of the B-rep that ADR-0021</p>
-<p>describes incompletely. Whichever ADR carries this decision to <i>accepted</i> must</p>
-<p>restate the model, listing the surface set and how a face states its extent.</p>
+<h3>ADR-0021's data model, restated</h3>
+<p>ADR-0021 records the canonical B-rep as `Surface ∈ {Plane, Cylinder, Cone,</p>
+<p>Sphere}<code> and </code>Curve ∈ {Line, Circle}<code>. That had already drifted: </code>Torus` is</p>
+<p>absent from the ADR, <code>Sphere</code> is <code>SphereS</code>, and — the part that matters here —</p>
+<p>the model says nothing about how a face states <b>which part</b> of its surface it</p>
+<p>occupies, although two surfaces already carry that on themselves. As accepted,</p>
+<p>the schema is:</p>
+<pre><code>Body    = [Face]
+Face    = (Surface, [Loop], sense)     # sense: outward normal == surface normal?
+Loop    = [Edge]                       # first loop outer, rest are holes
+Edge    = (Curve, v0, v1)              # v0 == v1 for a full circle
+Surface ∈ { Plane(n, d)
+          , Cylinder(p, d, r)
+          , Cone(p, d, tan_half)
+          , SphereS(c, r, pole)        # pole: TRIM — which side of the one rim
+          , Torus(c, d, R, a, k0, span)  # (k0, span): TRIM — sector extent
+          }
+Curve   ∈ { Line(p, d), Circle(c, n, ref, r) }</code></pre>
+<p><b>A trim is carried on the surface, not inferred from the loops</b>, because one</p>
+<p>rim bounds a quadric in two ways and the loops cannot say which (ADR-0021's own</p>
+<p><code>_sphere_zone</code> note records the same ambiguity for a two-rim sphere face). This</p>
+<p>ADR keeps that rule and changes only the <i>number kind</i> a trim may hold:</p>
+<pre><code>trim extent ::= (k0, span)             # exact, integer sectors — unchanged
+              | CInterval [θ0, θ1]     # certified, this ADR</code></pre>
+<p>The exact form remains the default and the only form used where the endpoints</p>
+<p>land on sectors, per ADR-0019's rule that a model which <i>could</i> be exact must</p>
+<p>not silently fall back to an interval. Adding the second form is the whole</p>
+<p>technical content of this ADR; everything else follows from it.</p>
 <h3>Breaking</h3>
 <p>Geometry output changes for every segment-bearing cut, so by CLAUDE.md rule 3</p>
 <p>this is a <b>breaking change, never auto-merged</b>, and by ADR-0006 it is</p>
@@ -184,6 +203,39 @@
 <p>total coverage, and the composed grid's remaining boolean gaps stop being a</p>
 <p>list of rungs that cannot be finished. <code>gitcad.bench.coverage</code> is the</p>
 <p>acceptance instrument: the number to move is the percentage, not the cell.</p>
+<h2>Implementation progress</h2>
+<p>Following the CLAUDE.md major-change process. Steps 1–2 done (this ADR; the</p>
+<p>loop is at Tier 0 for kernel semantics by rule anyway). Step 3 in progress:</p>
+<ul>
+<li>- <b>done, forge <code>f61e2aa</code></b> — certified trigonometry (<code>arccos</code>, <code>sin</code>, <code>cos</code>),</li>
+</ul>
+<p>  with the enclosure verified against identities rather than a double, since</p>
+<p>  the brackets are ~1e-40 and a <code>float</code> carries ~1e-16.</p>
+<ul>
+<li>- <b>done, forge <code>15db93b</code></b> — the arc-span foundation: <code>arc_cos_sin</code> (exact at</li>
+</ul>
+<p>  any angle), <code>arc_span_certified</code>, and <code>certified_bracket</code> (a float proposes,</p>
+<p>  exact comparison disposes). Validated against <code>_arc_quarters</code> across all 84</p>
+<p>  start/span combinations on the twelfth grid.</p>
+<ul>
+<li>- <b>done (measured)</b> — the generalised flat geometry is exact and manifold at</li>
+</ul>
+<p>  every rational depth: 0 unpaired edges at h = 1, 5/2, 3, −1, 7/3 on a</p>
+<p>  radius-5 bar. So only the MEASURE is missing, not the construction. This is</p>
+<p>  the fact that makes the rest tractable.</p>
+<ul>
+<li>- <b>next</b> — the measure. <code>volume</code> accumulates a <code>PiPoly</code> per face, so a</li>
+</ul>
+<p>  certified term means widening that accumulator through the whole integral,</p>
+<p>  and <code>_audited</code> calls <code>body.volume</code> on <b>every</b> construction — a half-done</p>
+<p>  version puts an unaudited answer in reach, which is the one thing this</p>
+<p>  kernel exists to prevent. Then <code>centroid</code>, then <code>vector_area</code> (which already</p>
+<p>  returns <code>None</code> for "not checked" and must keep saying so rather than</p>
+<p>  guessing).</p>
+<ul>
+<li>- <b>then</b> — shadow-run (step 4): every currently-exact result bit-identical,</li>
+</ul>
+<p>  and <code>gitcad.bench.coverage</code> moves rung 1 off 9%.</p>
 <h2>Alternatives considered</h2>
 <p><b>Keep building exact rungs.</b> Rejected by measurement: the next three</p>
 <p>candidate rungs are at 0%, 0% and 9%.</p>

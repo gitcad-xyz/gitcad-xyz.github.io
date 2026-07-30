@@ -25,9 +25,38 @@
   hr{border:0;border-top:1px solid var(--line);margin:32px 0}
   footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
 </style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0022</div><h1>ADR-0022 — A feature layer above the kernel, and <code>Body</code> as the only public return type</h1>
-<p>Status: <b>accepted</b> (design; implementation is #125)</p>
+<p>Status: <b>accepted</b>. A and B implemented 2026-07-29 (#125); C not started.</p>
 <p>Date: 2026-07-25</p>
 <p>Supersedes: nothing. Extends ADR-0021 (canonical B-rep).</p>
+<blockquote><b>Implementation note (2026-07-29).</b> Decisions <b>A</b> (<code>Body</code> is the only type</blockquote>
+<blockquote>the seam returns) and <b>B</b> (the <code>_repr</code> hint, spelled <code>Body.repr_hint</code>) are</blockquote>
+<blockquote>live. Decision <b>C</b> — features as named, re-playable operations with their</blockquote>
+<blockquote>own lineage ids — is <b>not</b> started; nothing below should be read as claiming</blockquote>
+<blockquote>it. The measurement this ADR demanded first was run and its answer decided the</blockquote>
+<blockquote>design: <code>to_body</code> succeeds for all 15 corpus representations and agrees with</blockquote>
+<blockquote>every one of the 13 closed forms <b>exactly</b>, but conversion costs <i>more</i> than</blockquote>
+<blockquote>the operation it replaces for all 15 — 3-10x typically, 400x for a filleted</blockquote>
+<blockquote>box. So the hint is load-bearing exactly as predicted here, not an</blockquote>
+<blockquote>optimisation, and B is not optional.</blockquote>
+<blockquote></blockquote>
+<blockquote>The consolidation was made answer-preserving rather than merely tested: the</blockquote>
+<blockquote>seam recovers the source form on the way in, so every internal computation is</blockquote>
+<blockquote>byte-identical to what it was before. Two things that took finding — the</blockquote>
+<blockquote>conversion must happen only at the OUTERMOST seam frame (ops call each other,</blockquote>
+<blockquote>and handing an inner call a canonical <code>Body</code> made <code>shell</code> invent refusals and</blockquote>
+<blockquote><code>_exact_bbox</code> return <code>None</code> into a tuple unpack), and <code>tessellate</code> must never</blockquote>
+<blockquote>take the hint path, which is the defect this ADR was written from.</blockquote>
+<blockquote></blockquote>
+<blockquote>Verified: single-op 353/360 and composed 180/285, both <b>unchanged</b>, which is</blockquote>
+<blockquote>this ADR's "does not add capability" claim in the only form that can be</blockquote>
+<blockquote>checked. The hint-may-never-change-the-answer oracle it asks for is</blockquote>
+<blockquote><code>tests/invariants/test_a_repr_hint_never_changes_the_answer.py</code>.</blockquote>
+<blockquote></blockquote>
+<blockquote>The <code>isinstance</code> chains it hoped to collapse have <b>not</b> collapsed — 175 of</blockquote>
+<blockquote>them remain inside <code>ref.py</code>, now reached through the recovered form. Migrating</blockquote>
+<blockquote>them op by op under the differential oracle is the remaining work, and doing</blockquote>
+<blockquote>it that way is deliberate: all at once would produce a refactor nobody can</blockquote>
+<blockquote>bisect.</blockquote>
 <h2>Context</h2>
 <p>ADR-0021 established one canonical <code>Body</code> that every representation converts to,</p>
 <p>so an operation is written once rather than once per representation. That fixed</p>
