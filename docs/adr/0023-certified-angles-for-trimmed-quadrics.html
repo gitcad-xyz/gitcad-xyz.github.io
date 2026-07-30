@@ -224,18 +224,82 @@ Curve   ∈ { Line(p, d), Circle(c, n, ref, r) }</code></pre>
 <p>  radius-5 bar. So only the MEASURE is missing, not the construction. This is</p>
 <p>  the fact that makes the rest tractable.</p>
 <ul>
-<li>- <b>next</b> — the measure. <code>volume</code> accumulates a <code>PiPoly</code> per face, so a</li>
+<li>- <b>done, forge <code>4f35f01</code></b> — the measure, and **rung 1 is 33/33 (100%) in the</li>
 </ul>
-<p>  certified term means widening that accumulator through the whole integral,</p>
-<p>  and <code>_audited</code> calls <code>body.volume</code> on <b>every</b> construction — a half-done</p>
-<p>  version puts an unaudited answer in reach, which is the one thing this</p>
-<p>  kernel exists to prevent. Then <code>centroid</code>, then <code>vector_area</code> (which already</p>
-<p>  returns <code>None</code> for "not checked" and must keep saying so rather than</p>
-<p>  guessing).</p>
+<p>  parameter space**, from 3/33. <code>_needs_certified</code> routes before any arithmetic</p>
+<p>  runs, so on-grid bodies stay byte-identical. The exact per-face term is tried</p>
+<p>  first and bracketed, so new arithmetic runs only where no exact term exists;</p>
+<p>  all 15 corpus representations agree exact-vs-certified. <code>vector_area_certified</code></p>
+<p>  keeps the orientation oracle at full strength — the only one of the audit's</p>
+<p>  four checks that sees a reversed face — and its test inverts correctly, since</p>
+<p>  a certified zero is a bracket <i>containing</i> zero.</p>
 <ul>
-<li>- <b>then</b> — shadow-run (step 4): every currently-exact result bit-identical,</li>
+<li>- <b>still open</b> — the <b>centroid</b> has no certified route, so it crosses the</li>
 </ul>
-<p>  and <code>gitcad.bench.coverage</code> moves rung 1 off 9%.</p>
+<p>  seam as <code>NaN</code> with <code>centroid_unavailable</code> (the <code>TrimmedShell</code> precedent; a</p>
+<p>  Monte-Carlo check confirmed the flag is the honest answer rather than a wrong</p>
+<p>  number). The <b>bore-across-a-wall</b> family is unchanged at 24%, because it</p>
+<p>  refuses inside <code>DrilledSolid</code>'s wall check rather than here; the <b>slot</b></p>
+<p>  family moved 0% → 4%. Each needs its own wiring.</p>
+<ul>
+<li>- <b>performance, since it nearly sank this.</b> Bisecting <code>arccos</code> to 1e-40 costs</li>
+</ul>
+<p>  ~133 exact-rational <code>cos</code> evaluations with compounding denominators: one flat</p>
+<p>  volume took <b>51 seconds</b>. A float proposing and exact arithmetic disposing</p>
+<p>  needs two, and with memoisation (~80 calls per body for ~12 distinct angles)</p>
+<p>  and 22 series terms instead of 30 it is <b>24 ms</b>.</p>
+<ul>
+<li>- <b>the honest precision limit.</b> The bracket is centred on <code>math.acos</code>, so the</li>
+</ul>
+<p>  float's own error is the floor — requesting 1e-25 fails verification and</p>
+<p>  settles near 1e-16 anyway. The default is the achievable 1e-15, about 1e-13</p>
+<p>  relative on a bar's volume: comparable to a double's error but <i>proven</i> to</p>
+<p>  enclose. Tighter costs bisection and is available via <code>width=</code>.</p>
+<ul>
+<li>- <b>done, forge (centroid)</b> — <code>_centroid_offgrid</code> gives the certified families</li>
+</ul>
+<p>  a centre of mass, not just a volume. The band moment carries the (D/2) term</p>
+<p>  the on-grid formula drops (on-grid arcs are quarter-turns, D=0; a flat's arc</p>
+<p>  is not), Monte-Carlo verified to the noise floor. So rung 1 is now a</p>
+<p>  <i>complete</i> answer through the seam: certified volume + real centroid.</p>
+<ul>
+<li>- <b>done, forge (wall primitives)</b> — <code>arcsin</code>, <code>ln</code>, <code>arctan</code>, <code>exp</code> certified,</li>
+</ul>
+<p>  which turn <code>_EXACT_FIELD_BOUNDARY</code>'s transcendental "walls" (arcsin, ln(1+√2),</p>
+<p>  arctan) from permanent refusals into bracketable answers. **The arithmetic is</p>
+<p>  built; the geometry is not** — closing those cells still needs the</p>
+<p>  sphere-minus-prism and cone-minus-prism <i>bodies</i> constructed (trimmed</p>
+<p>  spherical/conical patches, arc-trimmed walls), which is SSI-adjacent work.</p>
+<ul>
+<li>- <b>done, seam</b> — <code>revolve cut by half-space</code> closed (single-op 353→354): a</li>
+</ul>
+<p>  straight-walled revolve is coerced to a <code>Cyl</code> so the flat recognises it.</p>
+<ul>
+<li>- <b>then</b> — shadow-run (step 4) across the model corpus, then cut over.</li>
+</ul>
+<h2>Where the composed grid stands, honestly (2026-07-30)</h2>
+<p>The measure and its primitives are the <i>bounded</i> part of ADR-0023 and are</p>
+<p>largely done. The composed grid is still <b>180/285</b> because closing those cells</p>
+<p>needs the <b>bodies built</b>, not just measured, and that splits into work of very</p>
+<p>different cost:</p>
+<ul>
+<li>- <b>wall cells (sphere/cone through a prism)</b> — the primitives exist; the</li>
+</ul>
+<p>  bodies (trimmed quadric patches) do not. Bounded but substantial per family.</p>
+<ul>
+<li>- <b>~50 plane×quadric over <code>Body</code></b> — needs the general boolean written once</li>
+</ul>
+<p>  against <code>Body</code>, which is the ADR-0022 <code>isinstance</code>-chain migration (still 175</p>
+<p>  chains in <code>ref.py</code>, to move op-by-op under the differential oracle).</p>
+<ul>
+<li>- <b>6 quadric×quadric (SSI)</b> — genuinely unbounded on the exact path; the</li>
+</ul>
+<p>  cylinder×cylinder intersection is a space curve with no elementary form. This</p>
+<p>  is where "certified" and "sampled" (ADR-0019's proposed third tier) diverge.</p>
+<ul>
+<li>- <b>K4.2 shell (8), K5.2 blends (11)</b> — independent of ADR-0023; known</li>
+</ul>
+<p>  algorithms, multi-session, and K5.2 is the roadmap's largest single block.</p>
 <h2>Alternatives considered</h2>
 <p><b>Keep building exact rungs.</b> Rejected by measurement: the next three</p>
 <p>candidate rungs are at 0%, 0% and 9%.</p>
