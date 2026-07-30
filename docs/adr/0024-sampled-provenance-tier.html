@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ADR-0024 — the `sampled` provenance tier — gitcad</title><style>
+  :root{--bg:#0d1117;--ink:#c9d1d9;--dim:#8b949e;--acc:#58a6ff;--ok:#7ee787;--line:#21262d}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#ffffff;--ink:#24292f;--dim:#57606a;--acc:#0969da;--ok:#1a7f37;--line:#d8dee4}
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:20px;margin:8px 0 6px}
+  h2{font-size:15px;font-weight:700;margin:36px 0 10px}
+  h2::before{content:"## ";color:var(--dim)}
+  h3{font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--acc)}
+  p,li{margin:6px 0} ul,ol{padding-left:24px}
+  pre{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+  code{color:var(--ok)}
+  pre code{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{color:var(--dim)}
+  blockquote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim);margin:12px 0}
+  .crumb{color:var(--dim);margin-bottom:24px}
+  .crumb a{color:var(--dim)} .sig{color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  footer{margin-top:48px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style></head><body><div class="crumb"><a href="/">gitcad</a> / <a href="/docs/">docs</a> / adr / 0024</div><h1>ADR-0024 — the <code>sampled</code> provenance tier</h1>
+<p>Status: accepted (2026-07-30)</p>
+<p>Extends <a href="0019-certified-intervals.md">ADR-0019</a> (certified intervals). Supersedes</p>
+<p>nothing; the exactness charter is unchanged. This adds the third provenance tag</p>
+<p>ADR-0019 explicitly anticipated:</p>
+<blockquote>A future ADR may add a third tag (<code>sampled</code>) for genuinely unbounded-error</blockquote>
+<blockquote>meshes.</blockquote>
+<h2>Context</h2>
+<p>The kernel answers on three fields today — ℚ, ℚ[√d], ℚ[π] (exact) and</p>
+<p><code>CInterval</code> (certified) — and refuses everything outside them. <code>gitcad.bench</code></p>
+<p>measured what "outside" costs: of the composed grid's 95 open cells, the bulk</p>
+<p>are booleans the exact and certified paths cannot reach because the result is a</p>
+<p>general surface–surface intersection (two cylinders meeting in a space curve, a</p>
+<p>square prism through a sphere) with no elementary or bracketable closed form.</p>
+<p>The charter's rule was never "exact". It is <b>never silently wrong</b> — a bare</p>
+<p>float is refused because it "carries no proof: you cannot tell a correct</p>
+<p>534.6435 from a rounding artifact" (ADR-0019). A float with a *stated error</p>
+<p>bound and a provenance label* carries exactly that proof, at coarser resolution.</p>
+<p>That is what unblocks the remaining boolean grid without giving up the property</p>
+<p>that distinguishes this kernel from OCCT: a caller always knows what it is</p>
+<p>holding.</p>
+<h2>Decision</h2>
+<p>**Add a third provenance tier, <code>sampled</code>: a Monte-Carlo answer with a reported</p>
+<p>statistical error, used only where exact and certified both refuse.**</p>
+<ol>
+<li>1. A <code>SampledSolid</code> is a CSG expression over the operand meshes. Its measures —</li>
+</ol>
+<p>   volume, centroid — are Monte-Carlo estimates over the bounding box, with a</p>
+<p>   <b>3σ half-width reported alongside</b>, exactly as a certified answer reports</p>
+<p>   its bracket half-width. <code>provenance = "sampled"</code>.</p>
+<ol>
+<li>2. <b>Deterministic.</b> The sampler is seeded from a fixed constant, so the same</li>
+</ol>
+<p>   model gives the same number every run (ADR-0004's byte-canonical spirit —</p>
+<p>   a sampled value is float and never enters <code>Document.dumps()</code>, but a bench</p>
+<p>   number that jittered every run would be useless).</p>
+<ol>
+<li>3. <b>Last resort only.</b> The boolean seam tries exact, then certified, then</li>
+</ol>
+<p>   sampled. A shape that <i>could</i> be exact or certified never reaches the</p>
+<p>   sampler — the same ordering rule ADR-0019 gives for intervals.</p>
+<ol>
+<li>4. <b>Honestly labelled, never mixed.</b> A <code>sampled</code> result is never reported as</li>
+</ol>
+<p>   <code>exact</code> or <code>certified</code>. Its error is statistical (∝ 1/√N), not a rigorous</p>
+<p>   enclosure — so <code>sign()</code> off a sampled interval is NOT certified, and a</p>
+<p>   sampled result must never drive a topological decision. It answers a</p>
+<p>   measurement, it does not audit a construction.</p>
+<h2>What it covers, and what it does not</h2>
+<p>Covers: the boolean cells — plane×quadric over <code>Body</code>, the transcendental walls</p>
+<p>(sphere/cone through a prism), and quadric×quadric SSI. These are set operations</p>
+<p>on solids that already tessellate, so point membership by ray casting is</p>
+<p>well-defined and the volume is an honest unbiased estimator.</p>
+<p>Does NOT cover: <code>fillet</code> (K5.2) and <code>shell</code> (K4.2). Those are not set operations</p>
+<p>— they construct NEW surface (a rounded edge, an offset wall) that no membership</p>
+<p>test on the inputs produces. A sampled blend needs approximate surface</p>
+<p>construction, which is a separate decision, not this one.</p>
+<h2>Consequences</h2>
+<ul>
+<li>- The composed grid's boolean gaps become <code>sampled</code> answers rather than</li>
+</ul>
+<p>  refusals. The bench must report the tier: a <code>sampled</code> cell is not an <code>exact</code></p>
+<p>  or <code>certified</code> cell, and blending the counts would be the same dishonesty as</p>
+<p>  counting a permanent wall as a gap.</p>
+<ul>
+<li>- Error scales as 1/√N: ~0.2% relative at N = 200k, tightenable by the caller</li>
+</ul>
+<p>  at linear cost. Reported, never hidden.</p>
+<ul>
+<li>- The audit (<code>_audited</code>) does NOT run on a <code>SampledSolid</code> — there is no exact</li>
+</ul>
+<p>  b-rep to check. This is the honest boundary: a sampled answer is a</p>
+<p>  measurement of a shape the kernel did not construct exactly, and it says so.</p>
+<h2>Alternatives considered</h2>
+<p><b>A rigorous certified boolean</b> (interval marching over the SSI curve). The</p>
+<p>principled endpoint, and a real research programme. <code>sampled</code> is the pragmatic</p>
+<p>tier that answers today while that is built; a cell can later graduate from</p>
+<p><code>sampled</code> to <code>certified</code> without the caller's contract changing, because both</p>
+<p>report a value and a half-width.</p>
+<p><b>Bare floats</b> (OCCT's model). Rejected by ADR-0019 and not reopened: a float</p>
+<p>without a label or a bound is the one thing the charter forbids.</p><footer>generated from <a href="https://github.com/gitcad-xyz/gitcad">gitcad-xyz/gitcad</a> — this page regenerates automatically from the repo</footer></body></html>
